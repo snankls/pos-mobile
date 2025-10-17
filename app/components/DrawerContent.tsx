@@ -114,18 +114,17 @@ const DrawerContent = (props: DrawerContentProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const toggleExpand = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
+    // Allow only one dropdown open at a time
+    if (expandedItems.has(itemId)) {
+      setExpandedItems(new Set());
     } else {
-      newExpanded.add(itemId);
+      setExpandedItems(new Set([itemId]));
     }
-    setExpandedItems(newExpanded);
   };
 
   const handleNavigation = (route?: string) => {
     if (route) {
-      router.push(`/(drawer)/${route}`); // add /(drawer)/ prefix for all drawer routes
+      router.push(`/(drawer)/${route}`);
       props.navigation.closeDrawer();
     }
   };
@@ -220,11 +219,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
     backgroundColor: '#007AFF',
   },
   userInfo: {

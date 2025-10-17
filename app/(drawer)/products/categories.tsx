@@ -10,6 +10,7 @@ import {
   RefreshControl,
   StatusBar,
   Modal,
+  Image,
   TextInput,
 } from 'react-native';
 import axios from 'axios';
@@ -17,10 +18,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
+import * as ImagePicker from 'expo-image-picker';
 
 interface Category {
   id: number;
   name: string;
+  image_url: string;
   status: string;
 }
 
@@ -44,10 +47,13 @@ export default function CategoriesScreen() {
   const [selectedRecord, setSelectedRecord] = useState<Category | null>(null);
   const [editName, setEditName] = useState('');
   const [editStatus, setEditStatus] = useState('Active');
+  const [editImage, setEditImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  const UPLOAD_PATH = process.env.EXPO_PUBLIC_UPLOAD_PATH;
+  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
   useEffect(() => {
     fetchRecords();
@@ -102,7 +108,7 @@ export default function CategoriesScreen() {
   const saveRecord = async () => {
     try {
       setUpdating(true);
-      setValidationError(''); // clear previous errors
+      setValidationError('');
 
       if (!editName.trim()) {
         setValidationError('Please enter a name.');
@@ -110,21 +116,36 @@ export default function CategoriesScreen() {
         return;
       }
 
-      const payload = { name: editName.trim(), status: editStatus || 'Active' };
-      let res;
+      const formData = new FormData();
+      formData.append('name', editName.trim());
+      formData.append('status', editStatus || 'Active');
 
-      if (isEditing && selectedRecord) {
-        res = await axios.put(`${API_URL}/categories/${selectedRecord.id}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        res = await axios.post(`${API_URL}/categories`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      if (editImage) {
+        const filename = editImage.split('/').pop();
+        const type = filename?.split('.').pop();
+        formData.append('image', {
+          uri: editImage,
+          name: filename,
+          type: `image/${type}`,
+        } as any);
       }
 
-      const message =
-        res.data?.message || 'Operation completed successfully';
+      let url = isEditing && selectedRecord
+        ? `${API_URL}/categories/${selectedRecord.id}`
+        : `${API_URL}/categories`;
+
+      const res = await axios({
+        method: isEditing ? 'PUT' : 'POST',
+        url,
+        data: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+          'X-Upload-Path': UPLOAD_PATH,
+        },
+      });
+
+      const message = res.data?.message || 'Operation completed successfully';
       const isSuccess =
         res.data?.status === 'success' ||
         res.data?.success === true ||
@@ -148,6 +169,28 @@ export default function CategoriesScreen() {
       setValidationError(message);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert("Permission Denied", "You need to allow access to your photo library.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setEditImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Image picking error:", error);
     }
   };
 
@@ -214,6 +257,9 @@ export default function CategoriesScreen() {
       <View style={[styles.headerCell, { flex: 0.5 }]}>
         <Text style={styles.headerText}>ID</Text>
       </View>
+      <View style={[styles.headerCell, { flex: 1 }]}>
+        <Text style={styles.headerText}>IMAGE</Text>
+      </View>
       <View style={[styles.headerCell, { flex: 2 }]}>
         <Text style={styles.headerText}>NAME</Text>
       </View>
@@ -231,6 +277,19 @@ export default function CategoriesScreen() {
       <View style={[styles.cell, { flex: 0.5 }]}>
         <Text style={styles.cellText}>{item.id}</Text>
       </View>
+      <View style={[styles.cell, { flex: 1 }]}>
+        <Image
+          key={item.id}
+          source={
+            item.image_url
+              ? { uri: `${IMAGE_URL}/uploads/categories/${item.image_url}` }
+              : require('../../../assets/images/placeholder.jpg')
+          }
+          style={{ width: 50, height: 50, borderRadius: 5 }}
+          resizeMode="cover"
+          onError={(e) => console.log('Image error:', e.nativeEvent.error)}
+        />
+      </View>
       <View style={[styles.cell, { flex: 2 }]}>
         <Text style={[styles.cellText, styles.categoryName]}>{item.name}</Text>
       </View>
@@ -240,23 +299,22 @@ export default function CategoriesScreen() {
         </View>
       </View>
       <View style={[styles.cell, { flex: 1 }]}>
-  <View style={styles.actionButtons}>
-    <TouchableOpacity 
-      onPress={() => handleEdit(item)} 
-      style={[styles.actionButton, styles.editButton]}
-    >
-      <Ionicons name="create-outline" size={18} color="#007AFF" />
-    </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            onPress={() => handleEdit(item)} 
+            style={[styles.actionButton, styles.editButton]}
+          >
+            <Ionicons name="create-outline" size={18} color="#007AFF" />
+          </TouchableOpacity>
 
-    <TouchableOpacity 
-      onPress={() => handleDelete(item)} 
-      style={[styles.actionButton, styles.deleteButton]}
-    >
-      <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-    </TouchableOpacity>
-  </View>
-</View>
-
+          <TouchableOpacity 
+            onPress={() => handleDelete(item)} 
+            style={[styles.actionButton, styles.deleteButton]}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 
@@ -374,6 +432,22 @@ export default function CategoriesScreen() {
                 <Picker.Item label="Inactive" value="Inactive" />
               </Picker>
             </View>
+
+            <Text style={styles.modalLabel}>Image</Text>
+            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+              <Ionicons name="image-outline" size={20} color="#007AFF" />
+              <Text style={styles.uploadButtonText}>
+                {editImage ? 'Change Image' : 'Upload Image'}
+              </Text>
+            </TouchableOpacity>
+
+            {editImage && (
+              <Image
+                source={{ uri: editImage }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+            )}
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -621,6 +695,31 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 10,
+    marginBottom: 10,
+    backgroundColor: '#F0F7FF',
+  },
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  previewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   modalButtons: {
     flexDirection: 'row',

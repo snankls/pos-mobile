@@ -8,7 +8,6 @@ import {
   ScrollView,
   StatusBar,
   Platform,
-  SafeAreaView 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,7 +30,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
       
       {/* Header with proper safe area */}
@@ -70,7 +69,7 @@ export default function Dashboard() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

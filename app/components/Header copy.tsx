@@ -2,7 +2,7 @@ import { DrawerActions, useNavigation, useRoute } from '@react-navigation/native
 import { View, TouchableOpacity, StyleSheet, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function CustomHeader() {
+export default function Header() {
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -22,7 +22,6 @@ export default function CustomHeader() {
       </TouchableOpacity>
 
       {/* Title */}
-      {/* <Text style={styles.headerTitle}>{title}</Text> */}
       <Image
         source={require('../../assets/images/favicon.png')}
         style={styles.logoImage}

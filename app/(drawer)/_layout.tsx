@@ -2,14 +2,14 @@
 import React from "react";
 import { Drawer } from "expo-router/drawer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaView, StatusBar, Platform } from "react-native";
+import { View, StatusBar, Platform } from "react-native";
 import DrawerContent from "../components/DrawerContent";
-import CustomHeader from "../components/CustomHeader";
+import Header from "../components/Header";
 
 export default function DrawerLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView
+      <View
         style={{
           flex: 1,
           paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
@@ -20,7 +20,7 @@ export default function DrawerLayout() {
         <Drawer
           screenOptions={{
             headerShown: true, // ✅ show top bar on all inner screens
-            header: () => <CustomHeader />, // ✅ custom top bar
+            header: () => <Header />,
             drawerStyle: {
               width: 320,
             },
@@ -60,7 +60,7 @@ export default function DrawerLayout() {
           <Drawer.Screen name="reports/customers" options={{ drawerLabel: "Customer Reports" }} />
           <Drawer.Screen name="settings" options={{ drawerLabel: "Settings" }} />
         </Drawer>
-      </SafeAreaView>
+      </View>
     </GestureHandlerRootView>
   );
 }
