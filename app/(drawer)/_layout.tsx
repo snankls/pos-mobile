@@ -19,7 +19,7 @@ export default function DrawerLayout() {
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <Drawer
           screenOptions={{
-            headerShown: true, // ✅ show top bar on all inner screens
+            headerShown: true,
             header: () => <Header />,
             drawerStyle: {
               width: 320,

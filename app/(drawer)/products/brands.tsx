@@ -12,6 +12,7 @@ import {
   Modal,
   Image,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,6 +26,8 @@ interface Brand {
   name: string;
   image_url: string;
   status: string;
+  created_by?: string;
+  created_at?: string;
 }
 
 export default function BrandsScreen() {
@@ -120,6 +123,10 @@ export default function BrandsScreen() {
       formData.append('name', editName.trim());
       formData.append('status', editStatus || 'Active');
 
+      if (isEditing) {
+        formData.append('_method', 'PUT'); // 👈 important fix
+      }
+
       if (editImage) {
         const filename = editImage.split('/').pop();
         const type = filename?.split('.').pop();
@@ -130,14 +137,11 @@ export default function BrandsScreen() {
         } as any);
       }
 
-      let url = isEditing && selectedRecord
+      const url = isEditing && selectedRecord
         ? `${API_URL}/brands/${selectedRecord.id}`
         : `${API_URL}/brands`;
 
-      const res = await axios({
-        method: isEditing ? 'PUT' : 'POST',
-        url,
-        data: formData,
+      const res = await axios.post(url, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -235,7 +239,7 @@ export default function BrandsScreen() {
       case 'inactive':
         return '#FF3B30';
       case 'pending':
-        return '#FF9500';
+        return '#ff3366';
       default:
         return '#8E8E93';
     }
@@ -252,63 +256,89 @@ export default function BrandsScreen() {
     }
   };
 
+  const COLUMN_WIDTHS = {
+    id: 50,
+    image: 80,
+    name: 180,
+    status: 100,
+    created_by: 120,
+    actions: 100,
+  };
+
+  const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
+    id: 'ID',
+    image: 'Image',
+    name: 'Brand Name',
+    status: 'Status',
+    created_by: 'Created By',
+    actions: 'Actions',
+  };
+
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      <View style={[styles.headerCell, { flex: 0.5 }]}>
-        <Text style={styles.headerText}>ID</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 1 }]}>
-        <Text style={styles.headerText}>IMAGE</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 2 }]}>
-        <Text style={styles.headerText}>NAME</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 1 }]}>
-        <Text style={styles.headerText}>STATUS</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 1 }]}>
-        <Text style={styles.headerText}>ACTIONS</Text>
-      </View>
+      {Object.keys(COLUMN_WIDTHS).map((key) => (
+        <View
+          key={key}
+          style={[styles.headerCell, { width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }]}
+        >
+          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
+        </View>
+      ))}
     </View>
   );
 
   const TableRow = ({ item }: { item: Brand }) => (
     <View style={styles.tableRow}>
-      <View style={[styles.cell, { flex: 0.5 }]}>
+      {/* ID */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.id }]}>
         <Text style={styles.cellText}>{item.id}</Text>
       </View>
-      <View style={[styles.cell, { flex: 1 }]}>
+
+      {/* Image */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.image }]}>
         <Image
-          key={item.id}
           source={
             item.image_url
               ? { uri: `${IMAGE_URL}/uploads/brands/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
-          style={{ width: 50, height: 50, borderRadius: 5 }}
+          style={{ width: 45, height: 45, borderRadius: 6 }}
           resizeMode="cover"
-          onError={(e) => console.log('Image error:', e.nativeEvent.error)}
         />
       </View>
-      <View style={[styles.cell, { flex: 2 }]}>
-        <Text style={[styles.cellText, styles.brandName]}>{item.name}</Text>
+
+      {/* Brand Name */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.name }]}>
+        <Text style={[styles.cellText, { fontWeight: '600' }]}>{item.name}</Text>
       </View>
-      <View style={[styles.cell, { flex: 1 }]}>
+
+      {/* Status */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.status }]}>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
       </View>
-      <View style={[styles.cell, { flex: 1 }]}>
+
+      {/* Created By */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.created_by }]}>
+        <Text style={styles.cellText}>
+          {item.created_by}
+          {'\n'}
+          {item.created_at ? item.created_at.split('T')[0] : ''}
+        </Text>
+      </View>
+
+      {/* Actions */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.actions }]}>
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            onPress={() => handleEdit(item)} 
+          <TouchableOpacity
+            onPress={() => handleEdit(item)}
             style={[styles.actionButton, styles.editButton]}
           >
             <Ionicons name="create-outline" size={18} color="#007AFF" />
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => handleDelete(item)} 
+          <TouchableOpacity
+            onPress={() => handleDelete(item)}
             style={[styles.actionButton, styles.deleteButton]}
           >
             <Ionicons name="trash-outline" size={18} color="#FF3B30" />
@@ -384,17 +414,16 @@ export default function BrandsScreen() {
         </View>
       ) : (
         <>
-          <FlatList
-            data={records}
-            renderItem={({ item }) => <TableRow item={item} />}
-            keyExtractor={(item) => item.id.toString()}
-            ListHeaderComponent={<TableHeader />}
-            ListFooterComponent={<Pagination />}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
-            }
-            contentContainerStyle={{ paddingBottom: 40 }}
-          />
+          <ScrollView horizontal>
+            <FlatList
+              data={records}
+              renderItem={({ item }) => <TableRow item={item} />}
+              keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+              ListHeaderComponent={<TableHeader />}
+              ListFooterComponent={<Pagination />}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />}
+            />
+          </ScrollView>
         </>
       )}
 

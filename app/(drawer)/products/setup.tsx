@@ -9,7 +9,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,9 +18,8 @@ import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function CustomersSetupScreen() {
+export default function ProductsSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const UPLOAD_PATH = process.env.EXPO_PUBLIC_UPLOAD_PATH;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
   const { token } = useAuth();
@@ -29,21 +28,21 @@ export default function CustomersSetupScreen() {
 
   const [form, setForm] = useState({
     id: '',
-    code: '',
+    sku: '',
     name: '',
-    cnic: '',
-    email_address: '',
-    mobile_number: '',
-    phone_number: '',
-    whatsapp: '',
-    city_id: '',
-    credit_balance: '',
-    credit_limit: '',
+    category_id: '',
+    brand_id: '',
+    unit_id: '',
+    cost_price: '',
+    sale_price: '',
+    stock: '',
+    description: '',
     status: 'Active',
-    address: '',
   });
 
-  const [cities, setCities] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<any>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
@@ -51,33 +50,27 @@ export default function CustomersSetupScreen() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [globalError, setGlobalError] = useState('');
 
-  // 🔁 Load data
   useEffect(() => {
     if (token) {
-      fetchCities();
-      
-      if (id)
-        fetchCustomer(id as string);
-      else
-        resetForm();
+      fetchDropdownData();
+      if (id) fetchProduct(id as string);
+      else resetForm();
     }
   }, [token, id]);
 
   const resetForm = () => {
     setForm({
       id: '',
-      code: '',
+      sku: '',
       name: '',
-      cnic: '',
-      email_address: '',
-      mobile_number: '',
-      phone_number: '',
-      whatsapp: '',
-      city_id: '',
-      credit_balance: '',
-      credit_limit: '',
+      category_id: '',
+      brand_id: '',
+      unit_id: '',
+      cost_price: '',
+      sale_price: '',
+      stock: '',
+      description: '',
       status: 'Active',
-      address: '',
     });
     setImagePreview(null);
     setImageFile(null);
@@ -85,60 +78,59 @@ export default function CustomersSetupScreen() {
     setFormErrors({});
   };
 
-  // ✅ Fetch Cities
-  const fetchCities = async () => {
+  const fetchDropdownData = async () => {
     try {
-      const response = await axios.get(`${API_URL}/cities`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = { Authorization: `Bearer ${token}` };
 
-      const citiesData = Array.isArray(response.data)
-        ? response.data
-        : response.data.data || [];
-      setCities(citiesData);
+      const [catRes, brandRes, unitRes] = await Promise.all([
+        axios.get(`${API_URL}/categories`, { headers }),
+        axios.get(`${API_URL}/brands`, { headers }),
+        axios.get(`${API_URL}/units`, { headers }),
+      ]);
+
+      setCategories(catRes.data?.data || catRes.data || []);
+      setBrands(brandRes.data?.data || brandRes.data || []);
+      setUnits(unitRes.data?.data || unitRes.data || []);
     } catch (error) {
-      console.error('Error loading cities:', error);
-      setCities([]);
+      console.error('Error loading dropdowns:', error);
     }
   };
 
-  const fetchCustomer = async (customerId: string) => {
+  const fetchProduct = async (productId: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/customers/${customerId}`, {
+      const res = await axios.get(`${API_URL}/products/${productId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const customer = res.data;
+      const product = res.data;
 
       setForm({
-        id: customer.id?.toString() ?? '',
-        code: customer.code ?? '',
-        name: customer.name ?? '',
-        cnic: customer.cnic ?? '',
-        email_address: customer.email_address ?? '',
-        mobile_number: customer.mobile_number ?? '',
-        phone_number: customer.phone_number ?? '',
-        whatsapp: customer.whatsapp ?? '',
-        city_id: customer.city_id?.toString() ?? '',
-        credit_balance: customer.credit_balance?.toString() ?? '',
-        credit_limit: customer.credit_limit?.toString() ?? '',
-        status: customer.status ?? 'Active',
-        address: customer.address ?? '',
+        id: product.id?.toString() ?? '',
+        sku: product.sku ?? '',
+        name: product.name ?? '',
+        category_id: product.category_id?.toString() ?? '',
+        brand_id: product.brand_id?.toString() ?? '',
+        unit_id: product.unit_id?.toString() ?? '',
+        cost_price: product.cost_price?.toString() ?? '',
+        sale_price: product.sale_price?.toString() ?? '',
+        stock: product.stock?.toString() ?? '',
+        description: product.description ?? '',
+        status: product.status ?? 'Active',
       });
 
       const imageName =
-        customer.image_url ||
-        customer.image_name ||
-        customer.images?.image_name ||
+        product.image_url ||
+        product.image_name ||
+        product.images?.image_name ||
         null;
 
       if (imageName) {
-        setImagePreview(`${IMAGE_URL}/uploads/customers/${imageName}`);
+        setImagePreview(`${IMAGE_URL}/uploads/products/${imageName}`);
       } else {
         setImagePreview(null);
       }
     } catch (err) {
-      setGlobalError('Failed to load customer data.');
+      setGlobalError('Failed to load product data.');
     } finally {
       setLoading(false);
     }
@@ -149,12 +141,6 @@ export default function CustomersSetupScreen() {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
   };
 
-  const handleRemoveImage = () => {
-    setImagePreview(null);
-    setImageFile(null);
-    setIsImageDeleted(true);
-  };
-  
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -163,21 +149,26 @@ export default function CustomersSetupScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // correct enum
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.8,
     });
-
 
     if (!result.canceled) {
       const image = result.assets[0];
       setImageFile({
         uri: image.uri,
         name: image.uri.split('/').pop(),
-        type: image.type ? `image/${image.type}` : 'image/jpeg',
+        type: 'image/jpeg',
       });
       setImagePreview(image.uri);
     }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setImageFile(null);
+    setIsImageDeleted(true);
   };
 
   const handleSubmit = async () => {
@@ -187,7 +178,6 @@ export default function CustomersSetupScreen() {
       setFormErrors({});
 
       const formData = new FormData();
-
       Object.entries(form).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
           formData.append(key, value);
@@ -199,9 +189,9 @@ export default function CustomersSetupScreen() {
           const response = await fetch(imageFile.uri);
           const blob = await response.blob();
           const filename = imageFile.name || 'photo.jpg';
-          formData.append('customer_image', new File([blob], filename, { type: blob.type }));
+          formData.append('product_image', new File([blob], filename, { type: blob.type }));
         } else {
-          formData.append('customer_image', {
+          formData.append('product_image', {
             uri: imageFile.uri,
             name: imageFile.name || 'photo.jpg',
             type: imageFile.type || 'image/jpeg',
@@ -211,7 +201,7 @@ export default function CustomersSetupScreen() {
 
       formData.append('isImageDeleted', isImageDeleted ? '1' : '0');
 
-      const response = await axios.post(`${API_URL}/customers`, formData, {
+      const response = await axios.post(`${API_URL}/products`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -219,23 +209,18 @@ export default function CustomersSetupScreen() {
         },
       });
 
-      // ✅ Handle success
       if (response.status === 200 || response.status === 201) {
         resetForm();
-        setImagePreview(null);
-        setImageFile(null);
-        setIsImageDeleted(false);
-        router.push('/(drawer)/customers/lists');
+        router.push('/(drawer)/products/lists');
       } else {
         setGlobalError(response.data.message || 'Unexpected response from server.');
       }
     } catch (error: any) {
-      console.error('Error saving customer:', error);
-
+      console.error('Error saving product:', error);
       if (error.response?.status === 422) {
         setFormErrors(error.response.data.errors || {});
       } else {
-        setGlobalError('Failed to save customer. Please try again.');
+        setGlobalError('Failed to save product. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -253,102 +238,84 @@ export default function CustomersSetupScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(drawer)/customers/lists')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/(drawer)/products/lists')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <Text style={styles.title}>{id ? 'Edit Customer' : 'Add Customer'}</Text>
-        <View style={{ width: 24 }} /> 
+        <Text style={styles.title}>{id ? 'Edit Product' : 'Add Product'}</Text>
+        <View style={{ width: 24 }} />
       </View>
 
-      <View>
-        <Text style={styles.label}>ID/Code *</Text>
-        <TextInput style={styles.input} value={form.code} onChangeText={(t) => handleChange('code', t)} />
-        {formErrors.code && <Text style={styles.errorText}>{formErrors.code[0]}</Text>}
+      <Text style={styles.label}>SKU</Text>
+      <TextInput style={styles.input} value={form.sku} onChangeText={(t) => handleChange('sku', t)} />
+
+      <Text style={styles.label}>Product Name *</Text>
+      <TextInput style={styles.input} value={form.name} onChangeText={(t) => handleChange('name', t)} />
+
+      <Text style={styles.label}>Category</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={form.category_id}
+          onValueChange={(v) => handleChange('category_id', v)}
+          style={styles.picker}>
+          <Picker.Item label="Select Category" value="" />
+          {categories.map((c) => (
+            <Picker.Item key={c.id} label={c.name} value={String(c.id)} />
+          ))}
+        </Picker>
       </View>
 
-      <View>
-        <Text style={styles.label}>Name *</Text>
-        <TextInput style={styles.input} value={form.name} onChangeText={(t) => handleChange('name', t)} />
-        {formErrors.name && <Text style={styles.errorText}>{formErrors.name[0]}</Text>}
+      <Text style={styles.label}>Brand</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={form.brand_id}
+          onValueChange={(v) => handleChange('brand_id', v)}
+          style={styles.picker}>
+          <Picker.Item label="Select Brand" value="" />
+          {brands.map((b) => (
+            <Picker.Item key={b.id} label={b.name} value={String(b.id)} />
+          ))}
+        </Picker>
       </View>
 
-      <View>
-        <Text style={styles.label}>CNIC *</Text>
-        <TextInput style={styles.input} value={form.cnic} onChangeText={(t) => handleChange('cnic', t)} />
-        {formErrors.cnic && <Text style={styles.errorText}>{formErrors.cnic[0]}</Text>}
+      <Text style={styles.label}>Unit</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={form.unit_id}
+          onValueChange={(v) => handleChange('unit_id', v)}
+          style={styles.picker}>
+          <Picker.Item label="Select Unit" value="" />
+          {units.map((u) => (
+            <Picker.Item key={u.id} label={u.name} value={String(u.id)} />
+          ))}
+        </Picker>
       </View>
 
-      <View>
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput style={styles.input} value={form.email_address} onChangeText={(t) => handleChange('email_address', t)} />
-      </View>
+      <Text style={styles.label}>Cost Price</Text>
+      <TextInput style={styles.input} keyboardType="numeric" value={form.cost_price} onChangeText={(t) => handleChange('cost_price', t)} />
 
-      {/* Mobile Number */}
-      <View>
-        <Text style={styles.label}>Mobile Number</Text>
-        <TextInput style={styles.input} value={form.mobile_number} onChangeText={(t) => handleChange('mobile_number', t)} />
-      </View>
+      <Text style={styles.label}>Sale Price</Text>
+      <TextInput style={styles.input} keyboardType="numeric" value={form.sale_price} onChangeText={(t) => handleChange('sale_price', t)} />
 
-      {/* Phone Number */}
-      <View>
-        <Text style={styles.label}>Phone Number</Text>
-        <TextInput style={styles.input} value={form.phone_number} onChangeText={(t) => handleChange('phone_number', t)} />
-      </View>
+      <Text style={styles.label}>Stock</Text>
+      <TextInput style={styles.input} keyboardType="numeric" value={form.stock} onChangeText={(t) => handleChange('stock', t)} />
 
-      {/* Whatsapp */}
-      <View>
-        <Text style={styles.label}>Whatsapp</Text>
-        <TextInput style={styles.input} value={form.whatsapp} onChangeText={(t) => handleChange('whatsapp', t)} />
-      </View>
-
-      {/* City */}
-       <Text style={styles.label}>Select City</Text>
-       <View style={styles.pickerContainer}>
-         <Picker
-           selectedValue={form.city_id}
-           onValueChange={(value) => handleChange('city_id', value)}
-           style={styles.picker}
-         >
-           <Picker.Item label="Select City" value="" />
-           {cities.map((city) => (
-             <Picker.Item key={city.id} label={city.name} value={String(city.id)} />
-           ))}
-         </Picker>
-       </View>
-       {formErrors.city_id && <Text style={styles.errorText}>{formErrors.city_id[0]}</Text>}
-
-      {/* Credit Balance */}
-      <View>
-        <Text style={styles.label}>Credit Balance</Text>
-        <TextInput style={styles.input} value={form.credit_balance} keyboardType="numeric" onChangeText={(text) => handleChange('credit_balance', text)} />
-        {formErrors.credit_balance && <Text style={styles.errorText}>{formErrors.credit_balance[0]}</Text>}
-      </View>
-
-      {/* Credit Limit */}
-      <Text style={styles.label}>Credit Limit</Text>
-      <TextInput style={styles.input} value={form.credit_limit} keyboardType="numeric" onChangeText={(text) => handleChange('credit_limit', text)} />
-      {formErrors.credit_limit && <Text style={styles.errorText}>{formErrors.credit_limit[0]}</Text>}
-
-      <Text style={styles.label}>Address</Text>
+      <Text style={styles.label}>Description</Text>
       <TextInput
         style={[styles.input, { height: 80 }]}
         multiline
-        value={form.address}
-        onChangeText={(t) => handleChange('address', t)}
+        value={form.description}
+        onChangeText={(t) => handleChange('description', t)}
       />
 
       <Text style={styles.label}>Status</Text>
       <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={form.status}
-          onValueChange={(v) => handleChange('status', v)}
-          style={styles.picker}>
+        <Picker selectedValue={form.status} onValueChange={(v) => handleChange('status', v)} style={styles.picker}>
           <Picker.Item label="Active" value="Active" />
           <Picker.Item label="Inactive" value="Inactive" />
         </Picker>
       </View>
 
-      <Text style={styles.label}>Upload Image</Text>
+      <Text style={styles.label}>Product Image</Text>
       <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
         <Ionicons name="image-outline" size={20} color="#007AFF" />
         <Text style={styles.uploadButtonText}>Upload Image</Text>
@@ -356,11 +323,7 @@ export default function CustomersSetupScreen() {
 
       {imagePreview && (
         <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: imagePreview }}
-            style={styles.previewImage}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: imagePreview }} style={styles.previewImage} resizeMode="cover" />
           <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
             <Ionicons name="close-circle" size={26} color="red" />
           </TouchableOpacity>
@@ -368,7 +331,7 @@ export default function CustomersSetupScreen() {
       )}
 
       <TouchableOpacity onPress={handleSubmit} style={styles.saveButton} disabled={loading}>
-        <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
+        <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Product'}</Text>
       </TouchableOpacity>
 
       {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}

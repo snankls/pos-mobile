@@ -1,5 +1,4 @@
-// app/(drawer)/dashboard.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -8,45 +7,114 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
+import axios from 'axios';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigation = useNavigation();
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+  const [dashboardData, setDashboardData] = useState({
+    products_count: 0,
+    customers_count: 0,
+    invoices_count: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const openDrawer = () => {
     navigation.dispatch(DrawerActions.openDrawer());
   };
 
+  const fetchDashboardData = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/dashboard`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setDashboardData(response.data);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData();
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchDashboardData();
+    }
+  }, [token]);
+
   const quickStats = [
-    { title: 'Total Invoices', value: '124', icon: 'document-text', color: '#007AFF' },
-    { title: 'Products', value: '45', icon: 'cube', color: '#34C759' },
-    { title: 'Customers', value: '89', icon: 'people', color: '#FF9500' },
-    { title: 'Revenue', value: '$12,450', icon: 'cash', color: '#FF3B30' },
+    { 
+      title: 'Total Invoices', 
+      value: dashboardData.invoices_count.toString(), 
+      icon: 'document-text', 
+      color: '#007AFF' 
+    },
+    { 
+      title: 'Products', 
+      value: dashboardData.products_count.toString(), 
+      icon: 'cube', 
+      color: '#34C759' 
+    },
+    { 
+      title: 'Customers', 
+      value: dashboardData.customers_count.toString(), 
+      icon: 'people', 
+      color: '#ff3366' 
+    },
+    { 
+      title: 'Revenue', 
+      value: '$0',
+      icon: 'cash', 
+      color: '#FF3B30' 
+    },
   ];
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
-      
-      {/* Header with proper safe area */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuButton}>
-          <Ionicons name="menu-outline" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Ionicons name="notifications-outline" size={24} color="#333" />
-        </TouchableOpacity>
-      </View> */}
-
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.welcome}>Welcome back, {user?.first_name || user?.name}! 👋</Text>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+          />
+        }
+      >
+        <Text style={styles.welcome}>Welcome back, {user?.first_name || user?.name || 'User'}! 👋</Text>
         
         {/* Quick Stats */}
         <View style={styles.statsGrid}>
@@ -60,19 +128,27 @@ export default function Dashboard() {
             </View>
           ))}
         </View>
-
-        {/* Recent Activity */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityText}>No recent activity</Text>
-          </View>
-        </View>
       </ScrollView>
     </View>
   );
 }
 
+// Add these new styles to your existing styles
+const additionalStyles = StyleSheet.create({
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+});
+
+// Merge with your existing styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -170,4 +246,5 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  ...additionalStyles,
 });

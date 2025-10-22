@@ -12,6 +12,7 @@ import {
   Modal,
   Image,
   TextInput,
+  ScrollView
 } from 'react-native';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
@@ -235,7 +236,7 @@ export default function CategoriesScreen() {
       case 'inactive':
         return '#FF3B30';
       case 'pending':
-        return '#FF9500';
+        return '#ff3366';
       default:
         return '#8E8E93';
     }
@@ -252,63 +253,97 @@ export default function CategoriesScreen() {
     }
   };
 
+  // Define column widths and labels
+  const COLUMN_WIDTHS = {
+    id: 50,
+    name: 200,
+    image: 120,
+    status: 100,
+    created_by: 120,
+    actions: 100,
+  };
+
+  const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
+    id: 'ID',
+    image: 'Image',
+    name: 'Category Name',
+    status: 'Status',
+    created_by: 'Created By',
+    actions: 'Actions',
+  };
+
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      <View style={[styles.headerCell, { flex: 0.5 }]}>
-        <Text style={styles.headerText}>ID</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 1 }]}>
-        <Text style={styles.headerText}>IMAGE</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 2 }]}>
-        <Text style={styles.headerText}>NAME</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 1 }]}>
-        <Text style={styles.headerText}>STATUS</Text>
-      </View>
-      <View style={[styles.headerCell, { flex: 1 }]}>
-        <Text style={styles.headerText}>ACTIONS</Text>
-      </View>
+      {Object.keys(COLUMN_WIDTHS).map((key) => (
+        <View
+          key={key}
+          style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}
+        >
+          <Text style={styles.headerText}>
+            {COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 
   const TableRow = ({ item }: { item: Category }) => (
     <View style={styles.tableRow}>
-      <View style={[styles.cell, { flex: 0.5 }]}>
+      {/* ID */}
+      <View style={{ width: COLUMN_WIDTHS.id }}>
         <Text style={styles.cellText}>{item.id}</Text>
       </View>
-      <View style={[styles.cell, { flex: 1 }]}>
+
+      {/* Image */}
+      <View style={[styles.cell, { width: COLUMN_WIDTHS.image }]}>
         <Image
-          key={item.id}
           source={
             item.image_url
               ? { uri: `${IMAGE_URL}/uploads/categories/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
-          style={{ width: 50, height: 50, borderRadius: 5 }}
+          style={{ width: 45, height: 45, borderRadius: 6 }}
           resizeMode="cover"
-          onError={(e) => console.log('Image error:', e.nativeEvent.error)}
         />
       </View>
-      <View style={[styles.cell, { flex: 2 }]}>
-        <Text style={[styles.cellText, styles.categoryName]}>{item.name}</Text>
+
+      {/* Name */}
+      <View style={{ width: COLUMN_WIDTHS.name }}>
+        <Text style={styles.cellText}>{item.name}</Text>
       </View>
-      <View style={[styles.cell, { flex: 1 }]}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+
+      {/* Status */}
+      <View style={{ width: COLUMN_WIDTHS.status }}>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.status) },
+          ]}
+        >
+          <Text style={styles.statusText}>{item.status}</Text>
         </View>
       </View>
-      <View style={[styles.cell, { flex: 1 }]}>
+
+      {/* Created By + Date */}
+      <View style={{ width: COLUMN_WIDTHS.created_by }}>
+        <Text style={styles.cellText}>
+          {item.created_by}
+          {'\n'}
+          {item.created_at ? item.created_at.split('T')[0] : ''}
+        </Text>
+      </View>
+
+      {/* Actions */}
+      <View style={{ width: COLUMN_WIDTHS.actions }}>
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            onPress={() => handleEdit(item)} 
+          <TouchableOpacity
+            onPress={() => handleEdit(item)}
             style={[styles.actionButton, styles.editButton]}
           >
             <Ionicons name="create-outline" size={18} color="#007AFF" />
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => handleDelete(item)} 
+          <TouchableOpacity
+            onPress={() => handleDelete(item)}
             style={[styles.actionButton, styles.deleteButton]}
           >
             <Ionicons name="trash-outline" size={18} color="#FF3B30" />
@@ -384,17 +419,23 @@ export default function CategoriesScreen() {
         </View>
       ) : (
         <>
-          <FlatList
-            data={records}
-            renderItem={({ item }) => <TableRow item={item} />}
-            keyExtractor={(item) => item.id.toString()}
-            ListHeaderComponent={<TableHeader />}
-            ListFooterComponent={<Pagination />}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
-            }
-            contentContainerStyle={{ paddingBottom: 40 }}
-          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <FlatList
+              data={records}
+              renderItem={({ item }) => <TableRow item={item} />}
+              keyExtractor={(item) => item.id.toString()}
+              ListHeaderComponent={<TableHeader />}
+              ListFooterComponent={<Pagination />}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#007AFF']}
+                />
+              }
+              contentContainerStyle={{ paddingBottom: 40 }}
+            />
+          </ScrollView>
         </>
       )}
 
@@ -455,15 +496,7 @@ export default function CategoriesScreen() {
                 onPress={saveRecord}
                 disabled={updating}
               >
-                <Text style={styles.saveButtonText}>
-                  {updating
-                    ? isEditing
-                      ? 'Updating...'
-                      : 'Saving...'
-                    : isEditing
-                    ? 'Update'
-                    : 'Save Changing'}
-                </Text>
+                <Text style={styles.saveButtonText}>{updating ? 'Saving...' : isEditing ? 'Update' : 'Save Changing'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -722,23 +755,25 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5E5',
   },
   modalButtons: {
-    flexDirection: 'row',
+    width: '100%',
     marginTop: 20,
-    gap: 12,
   },
   saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    width: '100%',
+    paddingVertical: 12,
     borderRadius: 8,
     backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',
   },
   saveButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
+    textAlign: 'center',
   },
   errorMessage: { 
     fontSize: 16, 

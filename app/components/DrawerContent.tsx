@@ -24,7 +24,7 @@ interface MenuItem {
 }
 
 const menuData: MenuItem[] = [
-  { id: 'category-main', title: 'Main', category: true },
+  { id: 'category-main', title: 'Main', category: true, icon: '' },
   {
     id: 'dashboard',
     title: 'Dashboard',
@@ -32,7 +32,7 @@ const menuData: MenuItem[] = [
     route: 'dashboard',
   },
   
-  { id: 'category-companies', title: 'Companies', category: true },
+  { id: 'category-companies', title: 'Companies', category: true, icon: '' },
   {
     id: 'companies',
     title: 'Company',
@@ -45,9 +45,9 @@ const menuData: MenuItem[] = [
     title: 'Invoices',
     icon: 'document-text-outline',
     items: [
-      { id: 'invoices-list', title: 'Listing', route: 'invoices/lists' },
-      { id: 'invoices-add', title: 'Add New', route: 'invoices/add' },
-      { id: 'invoices-returns', title: 'Returns', route: 'invoices/returns' },
+      { id: 'invoices-list', title: 'Listing', route: 'invoices/lists', icon: '' },
+      { id: 'invoices-add', title: 'Add New', route: 'invoices/setup', icon: '' },
+      { id: 'invoices-returns', title: 'Returns', route: 'invoices/returns', icon: '' },
     ],
   },
   
@@ -56,12 +56,12 @@ const menuData: MenuItem[] = [
     title: 'Products',
     icon: 'cube-outline',
     items: [
-      { id: 'products-list', title: 'Listing', route: 'products/lists' },
-      { id: 'products-add', title: 'Add New', route: 'products/add' },
-      { id: 'products-categories', title: 'Categories', route: 'products/categories' },
-      { id: 'products-brands', title: 'Brands', route: 'products/brands' },
-      { id: 'products-units', title: 'Units', route: 'products/units' },
-      { id: 'products-stocks', title: 'Stocks', route: 'products/stocks' },
+      { id: 'products-list', title: 'Listing', route: 'products/lists', icon: '' },
+      { id: 'products-add', title: 'Add New', route: 'products/setup', icon: '' },
+      { id: 'products-categories', title: 'Categories', route: 'products/categories', icon: '' },
+      { id: 'products-brands', title: 'Brands', route: 'products/brands', icon: '' },
+      { id: 'products-units', title: 'Units', route: 'products/units', icon: '' },
+      { id: 'products-stocks', title: 'Stocks', route: 'products/stocks', icon: '' },
     ],
   },
   
@@ -69,7 +69,7 @@ const menuData: MenuItem[] = [
     id: 'customers',
     title: 'Customers',
     icon: 'people-outline',
-    route: 'customers',
+    route: 'customers/lists',
   },
   
   {
@@ -91,7 +91,7 @@ const menuData: MenuItem[] = [
     title: 'Reports',
     icon: 'bar-chart-outline',
     items: [
-      { id: 'reports-customers', title: 'Customers', route: 'reports/customers' },
+      { id: 'reports-customers', title: 'Customers', route: 'reports/customers', icon: '' },
     ],
   },
   
@@ -114,31 +114,39 @@ const DrawerContent = (props: DrawerContentProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const toggleExpand = (itemId: string) => {
-    // Allow only one dropdown open at a time
-    if (expandedItems.has(itemId)) {
-      setExpandedItems(new Set());
-    } else {
-      setExpandedItems(new Set([itemId]));
-    }
+    setExpandedItems((prev) => {
+      // if already expanded, collapse it
+      if (prev.has(itemId)) return new Set();
+      // otherwise, expand only this one
+      return new Set([itemId]);
+    });
   };
 
-  const handleNavigation = (route?: string) => {
+  const handleNavigation = (route?: string, parentId?: string) => {
     if (route) {
+      // If clicked inside a submenu, keep its parent open
+      if (parentId) {
+        setExpandedItems(new Set([parentId]));
+      } else {
+        // If clicked outside (another main menu), collapse all
+        setExpandedItems(new Set());
+      }
+
       router.push(`/(drawer)/${route}`);
       props.navigation.closeDrawer();
     }
   };
 
-  const isActive = (route?: string) => {
-    if (!route) return false;
-    const routePath = `/(drawer)/${route}`;
-    return pathname === routePath || pathname.startsWith(routePath + '/');
-  };
-
-  const renderMenuItem = (item: MenuItem, level = 0) => {
+  const renderMenuItem = (
+    item: MenuItem & { parentId?: string },
+    level = 0
+  ) => {
     if (item.category) {
       return (
-        <View key={item.id} style={[styles.categoryContainer, { paddingLeft: 16 + level * 16 }]}>
+        <View
+          key={item.id}
+          style={[styles.categoryContainer, { paddingLeft: 16 + level * 16 }]}
+        >
           <Text style={styles.categoryText}>{item.title}</Text>
         </View>
       );
@@ -152,36 +160,48 @@ const DrawerContent = (props: DrawerContentProps) => {
       <View key={item.id}>
         <TouchableOpacity
           style={[
-            styles.menuItem, 
+            styles.menuItem,
             { paddingLeft: 16 + level * 16 },
-            active && styles.activeMenuItem
+            active && styles.activeMenuItem,
           ]}
-          onPress={() => hasChildren ? toggleExpand(item.id) : handleNavigation(item.route)}
+          onPress={() =>
+            hasChildren
+              ? toggleExpand(item.id)
+              : handleNavigation(item.route, item.parentId)
+          }
         >
-          <Ionicons 
-            name={item.icon as any} 
-            size={20} 
-            color={active ? '#007AFF' : '#666'} 
+          <Ionicons
+            name={item.icon as any}
+            size={20}
+            color={active ? "#007AFF" : "#666"}
           />
           <Text style={[styles.menuText, active && styles.activeMenuText]}>
             {item.title}
           </Text>
           {hasChildren && (
             <Ionicons
-              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+              name={isExpanded ? "chevron-up-outline" : "chevron-down-outline"}
               size={16}
-              color={active ? '#007AFF' : '#666'}
+              color={active ? "#007AFF" : "#666"}
             />
           )}
         </TouchableOpacity>
 
         {hasChildren && isExpanded && (
           <View style={styles.subMenu}>
-            {item.items!.map((subItem) => renderMenuItem(subItem, level + 1))}
+            {item.items!.map((subItem) =>
+              renderMenuItem({ ...subItem, parentId: item.id }, level + 1)
+            )}
           </View>
         )}
       </View>
     );
+  };
+
+  const isActive = (route?: string) => {
+    if (!route) return false;
+    const routePath = `/(drawer)/${route}`;
+    return pathname === routePath || pathname.startsWith(routePath + '/');
   };
 
   return (

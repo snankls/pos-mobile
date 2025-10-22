@@ -16,7 +16,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Customer {
   id: number;
@@ -28,9 +28,11 @@ interface Customer {
   whatsapp?: string;
   image_url?: string;
   status: string;
+  created_by?: string;
+  created_at?: string;
 }
 
-export default function CustomersScreen() {
+export default function CustomersListsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   
@@ -49,18 +51,6 @@ export default function CustomersScreen() {
 
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
-
-  const COLUMN_WIDTHS = {
-    id: 50,
-    image: 80,
-    id_code: 100,
-    customer_name: 180,
-    phone_number: 120,
-    city: 120,
-    whatsapp: 100,
-    status: 80,
-    actions: 100,
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -144,9 +134,9 @@ export default function CustomersScreen() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return '#4CD964';
+        return '#05a34a';
       case 'inactive':
-        return '#FF9500';
+        return '#ff3366';
       case 'blocked':
         return '#FF3B30';
       default:
@@ -156,35 +146,39 @@ export default function CustomersScreen() {
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
+  const COLUMN_WIDTHS = {
+    id: 50,
+    image: 80,
+    id_code: 100,
+    customer_name: 180,
+    mobile_number: 120,
+    whatsapp: 100,
+    city: 120,
+    status: 80,
+    created_by: 100,
+    actions: 150,
+  };
+
+  const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
+    id: 'ID',
+    image: 'Image',
+    id_code: 'Code',
+    customer_name: 'Customer Name',
+    mobile_number: 'Mobile Number',
+    whatsapp: 'Whatsapp',
+    city: 'City',
+    status: 'Status',
+    created_by: 'Created By',
+    actions: 'Actions',
+  };
+
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      <View style={{ width: COLUMN_WIDTHS.id }}>
-        <Text style={styles.headerText}>ID</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.image }}>
-        <Text style={styles.headerText}>Image</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.id_code }}>
-        <Text style={styles.headerText}>ID/Code</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.customer_name }}>
-        <Text style={styles.headerText}>Customer Name</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.phone_number }}>
-        <Text style={styles.headerText}>Phone Number</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.whatsapp }}>
-        <Text style={styles.headerText}>WhatsApp</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.city }}>
-        <Text style={styles.headerText}>City</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.status }}>
-        <Text style={styles.headerText}>STATUS</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.actions }}>
-        <Text style={styles.headerText}>ACTIONS</Text>
-      </View>
+      {Object.keys(COLUMN_WIDTHS).map((key) => (
+        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
+          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
+        </View>
+      ))}
     </View>
   );
 
@@ -199,7 +193,7 @@ export default function CustomersScreen() {
           source={
             item.image_url
               ? { uri: `${IMAGE_URL}/uploads/customers/${item.image_url}` }
-              : require('../../assets/images/placeholder.jpg')
+              : require('../../../assets/images/placeholder.jpg')
           }
           style={{ width: 50, height: 50, borderRadius: 5 }}
           resizeMode="cover"
@@ -212,7 +206,7 @@ export default function CustomersScreen() {
       <View style={{ width: COLUMN_WIDTHS.customer_name }}>
         <Text style={styles.cellText}>{item.name}</Text>
       </View>
-      <View style={{ width: COLUMN_WIDTHS.phone_number }}>
+      <View style={{ width: COLUMN_WIDTHS.mobile_number }}>
         <Text style={styles.cellText}>{item.mobile_number || '-'}</Text>
       </View>
       <View style={{ width: COLUMN_WIDTHS.whatsapp }}>
@@ -226,11 +220,29 @@ export default function CustomersScreen() {
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
       </View>
+      <View style={{ width: COLUMN_WIDTHS.created_by }}>
+        <Text style={styles.cellText}>
+          {item.created_by}
+          {'\n'}
+          {item.created_at ? item.created_at.split('T')[0] : ''}
+        </Text>
+      </View>
       <View style={{ width: COLUMN_WIDTHS.actions }}>
         <View style={styles.actionButtons}>
+          {/* View Button */}
+          <TouchableOpacity
+            onPress={() => router.push(`/(drawer)/customers/view?id=${item.id}`)}
+            style={[styles.actionButton, styles.viewButton]}
+          >
+            <Ionicons name="eye-outline" size={18} color="#28A745" />
+          </TouchableOpacity>
+          
+          {/* Edit Button */}
           <TouchableOpacity onPress={() => router.push(`/(drawer)/customers/setup?id=${item.id}`)} style={[styles.actionButton, styles.editButton]}>
             <Ionicons name="create-outline" size={18} color="#007AFF" />
           </TouchableOpacity>
+          
+          {/* Delete Button */}
           <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionButton, styles.deleteButton]}>
             <Ionicons name="trash-outline" size={18} color="#FF3B30" />
           </TouchableOpacity>
@@ -369,6 +381,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 5,
+  },
+  actionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  viewButton: {
+    backgroundColor: '#E9F9EE',
   },
   editButton: { backgroundColor: '#E8F2FF' },
   deleteButton: { backgroundColor: '#FFEAEA' },

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, usePathname } from 'expo-router';
 
@@ -21,10 +22,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const pathname = usePathname();
+
+  const loadUser = async (storedToken: string) => {
+    try {
+      const res = await axios.get(`${API_URL}/current-user`, {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      });
+      setUser(res.data);
+      await AsyncStorage.setItem('userData', JSON.stringify(res.data));
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        console.log('Error loading user:', error.response?.data || error.message);
+      } else if (error instanceof Error) {
+        console.log('Error loading user:', error.message);
+      } else {
+        console.log('Unknown error loading user:', error);
+      }
+    }
+  };
 
   // Function to check if token is expired
   const isTokenExpired = (token: string): boolean => {
@@ -73,19 +94,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem('userData'),
         ]);
 
-        if (storedToken && storedUser) {
-          // Check if token is expired on app start
+        if (storedToken) {
           if (!isTokenExpired(storedToken)) {
             setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-            
-            // Only redirect if we're on the login page
+
+            // Load fresh user data from API
+            await loadUser(storedToken);
+
+            // Also update local user cache
+            if (user) {
+              await AsyncStorage.setItem('userData', JSON.stringify(user));
+            }
+
+            // Redirect only if on login or root
             if (pathname === '/login' || pathname === '/') {
               console.log('Redirecting to dashboard from:', pathname);
               router.replace('/(drawer)/dashboard');
             }
           } else {
-            // Token is expired, clear storage
             console.log('Token expired on app start');
             await logout();
           }
