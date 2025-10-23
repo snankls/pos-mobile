@@ -144,7 +144,7 @@ export default function ProductsListsScreen() {
   // Column definitions
   const COLUMN_WIDTHS = {
     id: 50,
-    image: 80,
+    image: 70,
     sku: 100,
     product_name: 180,
     brand_id: 100,

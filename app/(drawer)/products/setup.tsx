@@ -10,11 +10,12 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
-import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -50,6 +51,14 @@ export default function ProductsSetupScreen() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [globalError, setGlobalError] = useState('');
 
+  // Modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState<'category' | 'brand' | 'unit' | 'status' | null>(null);
+  const [modalData, setModalData] = useState<any[]>([]);
+  const [modalTitle, setModalTitle] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredData, setFilteredData] = useState<any[]>([]);
+
   useEffect(() => {
     if (token) {
       fetchDropdownData();
@@ -57,6 +66,18 @@ export default function ProductsSetupScreen() {
       else resetForm();
     }
   }, [token, id]);
+
+  useEffect(() => {
+    // Filter data based on search query
+    if (searchQuery) {
+      const filtered = modalData.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredData(filtered);
+    } else {
+      setFilteredData(modalData);
+    }
+  }, [searchQuery, modalData]);
 
   const resetForm = () => {
     setForm({
@@ -141,6 +162,97 @@ export default function ProductsSetupScreen() {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
   };
 
+  // Modal functions
+  const openModal = (type: 'category' | 'brand' | 'unit' | 'status') => {
+    setModalType(type);
+    setSearchQuery('');
+    
+    switch (type) {
+      case 'category':
+        setModalData(categories);
+        setModalTitle('Select Category');
+        break;
+      case 'brand':
+        setModalData(brands);
+        setModalTitle('Select Brand');
+        break;
+      case 'unit':
+        setModalData(units);
+        setModalTitle('Select Unit');
+        break;
+      case 'status':
+        setModalData([
+          { id: 'Active', name: 'Active' },
+          { id: 'Inactive', name: 'Inactive' }
+        ]);
+        setModalTitle('Select Status');
+        break;
+    }
+    
+    setModalVisible(true);
+  };
+
+  const handleSelectItem = (item: any) => {
+    if (!modalType) return;
+
+    const fieldMap = {
+      category: 'category_id',
+      brand: 'brand_id',
+      unit: 'unit_id',
+      status: 'status'
+    };
+
+    handleChange(fieldMap[modalType], item.id);
+    setModalVisible(false);
+    setSearchQuery(''); // Clear search when item is selected
+  };
+
+  // Fixed selection functions - they now properly find the selected item
+  const getSelectedCategoryName = () => {
+    if (!form.category_id) return 'Select One';
+    
+    // First try to find in the main categories array
+    const selectedCategory = categories.find(cat => String(cat.id) === String(form.category_id));
+    
+    // If not found in main array, try to find in any data we have
+    if (!selectedCategory && modalType === 'category') {
+      const fromModal = modalData.find(cat => String(cat.id) === String(form.category_id));
+      return fromModal ? fromModal.name : 'Select Category';
+    }
+    
+    return selectedCategory ? selectedCategory.name : 'Select Category';
+  };
+
+  const getSelectedBrandName = () => {
+    if (!form.brand_id) return 'Select One';
+    
+    const selectedBrand = brands.find(brand => String(brand.id) === String(form.brand_id));
+    
+    if (!selectedBrand && modalType === 'brand') {
+      const fromModal = modalData.find(brand => String(brand.id) === String(form.brand_id));
+      return fromModal ? fromModal.name : 'Select Brand';
+    }
+    
+    return selectedBrand ? selectedBrand.name : 'Select Brand';
+  };
+
+  const getSelectedUnitName = () => {
+    if (!form.unit_id) return 'Select One';
+    
+    const selectedUnit = units.find(unit => String(unit.id) === String(form.unit_id));
+    
+    if (!selectedUnit && modalType === 'unit') {
+      const fromModal = modalData.find(unit => String(unit.id) === String(form.unit_id));
+      return fromModal ? fromModal.name : 'Select Unit';
+    }
+    
+    return selectedUnit ? selectedUnit.name : 'Select Unit';
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -176,6 +288,13 @@ export default function ProductsSetupScreen() {
       setLoading(true);
       setGlobalError('');
       setFormErrors({});
+
+      // Validation - check if required fields are filled
+      if (!form.name) {
+        setFormErrors({ name: ['Product name is required'] });
+        setLoading(false);
+        return;
+      }
 
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
@@ -227,6 +346,53 @@ export default function ProductsSetupScreen() {
     }
   };
 
+  const renderModalItem = ({ item }: { item: any }) => {
+    // Get the current field value based on modal type
+    let currentValue = '';
+    switch (modalType) {
+      case 'category':
+        currentValue = form.category_id;
+        break;
+      case 'brand':
+        currentValue = form.brand_id;
+        break;
+      case 'unit':
+        currentValue = form.unit_id;
+        break;
+      case 'status':
+        currentValue = form.status;
+        break;
+    }
+
+    const isSelected = String(currentValue) === String(item.id);
+
+    return (
+      <TouchableOpacity
+        style={[styles.modalItem, isSelected && styles.selectedModalItem]}
+        onPress={() => handleSelectItem(item)}
+      >
+        <Text style={styles.modalItemText}>{item.name}</Text>
+        {isSelected && (
+          <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmptyModal = () => (
+    <View style={styles.emptyModal}>
+      <Ionicons name="search-outline" size={48} color="#999" />
+      <Text style={styles.emptyModalText}>
+        {searchQuery ? 'No results found' : 'No items available'}
+      </Text>
+      {searchQuery && (
+        <Text style={[styles.emptyModalText, { fontSize: 14 }]}>
+          Try searching with different keywords
+        </Text>
+      )}
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -245,96 +411,198 @@ export default function ProductsSetupScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <Text style={styles.label}>SKU</Text>
-      <TextInput style={styles.input} value={form.sku} onChangeText={(t) => handleChange('sku', t)} />
-
-      <Text style={styles.label}>Product Name *</Text>
-      <TextInput style={styles.input} value={form.name} onChangeText={(t) => handleChange('name', t)} />
-
-      <Text style={styles.label}>Category</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={form.category_id}
-          onValueChange={(v) => handleChange('category_id', v)}
-          style={styles.picker}>
-          <Picker.Item label="Select Category" value="" />
-          {categories.map((c) => (
-            <Picker.Item key={c.id} label={c.name} value={String(c.id)} />
-          ))}
-        </Picker>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>SKU</Text>
+        <TextInput 
+          style={[styles.input, formErrors.sku && styles.inputError]} 
+          value={form.sku} 
+          onChangeText={(t) => handleChange('sku', t)} 
+        />
+        {formErrors.sku && <Text style={styles.errorText}>{formErrors.sku[0]}</Text>}
       </View>
 
-      <Text style={styles.label}>Brand</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={form.brand_id}
-          onValueChange={(v) => handleChange('brand_id', v)}
-          style={styles.picker}>
-          <Picker.Item label="Select Brand" value="" />
-          {brands.map((b) => (
-            <Picker.Item key={b.id} label={b.name} value={String(b.id)} />
-          ))}
-        </Picker>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Product Name *</Text>
+        <TextInput 
+          style={[styles.input, formErrors.name && styles.inputError]} 
+          value={form.name} 
+          onChangeText={(t) => handleChange('name', t)} 
+        />
+        {formErrors.name && <Text style={styles.errorText}>{formErrors.name[0]}</Text>}
       </View>
 
-      <Text style={styles.label}>Unit</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={form.unit_id}
-          onValueChange={(v) => handleChange('unit_id', v)}
-          style={styles.picker}>
-          <Picker.Item label="Select Unit" value="" />
-          {units.map((u) => (
-            <Picker.Item key={u.id} label={u.name} value={String(u.id)} />
-          ))}
-        </Picker>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Category</Text>
+        <TouchableOpacity 
+          style={[styles.modalTrigger, formErrors.category_id && styles.inputError]}
+          onPress={() => openModal('category')}
+        >
+          <Text style={form.category_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {getSelectedCategoryName()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {formErrors.category_id && <Text style={styles.errorText}>{formErrors.category_id[0]}</Text>}
       </View>
 
-      <Text style={styles.label}>Cost Price</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={form.cost_price} onChangeText={(t) => handleChange('cost_price', t)} />
-
-      <Text style={styles.label}>Sale Price</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={form.sale_price} onChangeText={(t) => handleChange('sale_price', t)} />
-
-      <Text style={styles.label}>Stock</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={form.stock} onChangeText={(t) => handleChange('stock', t)} />
-
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={[styles.input, { height: 80 }]}
-        multiline
-        value={form.description}
-        onChangeText={(t) => handleChange('description', t)}
-      />
-
-      <Text style={styles.label}>Status</Text>
-      <View style={styles.pickerContainer}>
-        <Picker selectedValue={form.status} onValueChange={(v) => handleChange('status', v)} style={styles.picker}>
-          <Picker.Item label="Active" value="Active" />
-          <Picker.Item label="Inactive" value="Inactive" />
-        </Picker>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Brand</Text>
+        <TouchableOpacity 
+          style={[styles.modalTrigger, formErrors.brand_id && styles.inputError]}
+          onPress={() => openModal('brand')}
+        >
+          <Text style={form.brand_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {getSelectedBrandName()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {formErrors.brand_id && <Text style={styles.errorText}>{formErrors.brand_id[0]}</Text>}
       </View>
 
-      <Text style={styles.label}>Product Image</Text>
-      <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
-        <Ionicons name="image-outline" size={20} color="#007AFF" />
-        <Text style={styles.uploadButtonText}>Upload Image</Text>
-      </TouchableOpacity>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Unit</Text>
+        <TouchableOpacity 
+          style={[styles.modalTrigger, formErrors.unit_id && styles.inputError]}
+          onPress={() => openModal('unit')}
+        >
+          <Text style={form.unit_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {getSelectedUnitName()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {formErrors.unit_id && <Text style={styles.errorText}>{formErrors.unit_id[0]}</Text>}
+      </View>
 
-      {imagePreview && (
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: imagePreview }} style={styles.previewImage} resizeMode="cover" />
-          <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
-            <Ionicons name="close-circle" size={26} color="red" />
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Cost Price</Text>
+        <TextInput 
+          style={[styles.input, formErrors.cost_price && styles.inputError]} 
+          keyboardType="numeric" 
+          value={form.cost_price} 
+          onChangeText={(t) => handleChange('cost_price', t)} 
+        />
+        {formErrors.cost_price && <Text style={styles.errorText}>{formErrors.cost_price[0]}</Text>}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Sale Price</Text>
+        <TextInput 
+          style={[styles.input, formErrors.sale_price && styles.inputError]} 
+          keyboardType="numeric" 
+          value={form.sale_price} 
+          onChangeText={(t) => handleChange('sale_price', t)} 
+        />
+        {formErrors.sale_price && <Text style={styles.errorText}>{formErrors.sale_price[0]}</Text>}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Stock</Text>
+        <TextInput 
+          style={[styles.input, formErrors.stock && styles.inputError]} 
+          keyboardType="numeric" 
+          value={form.stock} 
+          onChangeText={(t) => handleChange('stock', t)} 
+        />
+        {formErrors.stock && <Text style={styles.errorText}>{formErrors.stock[0]}</Text>}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          style={[styles.input, { height: 80 }, formErrors.description && styles.inputError]}
+          multiline
+          value={form.description}
+          onChangeText={(t) => handleChange('description', t)}
+        />
+        {formErrors.description && <Text style={styles.errorText}>{formErrors.description[0]}</Text>}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Status</Text>
+        <TouchableOpacity 
+          style={styles.modalTrigger}
+          onPress={() => openModal('status')}
+        >
+          <Text style={styles.modalTriggerText}>{form.status}</Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Upload Image</Text>
+        <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
+          <Ionicons name="image-outline" size={20} color="#007AFF" />
+          <Text style={styles.uploadButtonText}>Upload Image</Text>
+        </TouchableOpacity>
+
+        {imagePreview && (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: imagePreview }} style={styles.previewImage} resizeMode="cover" />
+            <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
+              <Ionicons name="close-circle" size={26} color="red" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
       <TouchableOpacity onPress={handleSubmit} style={styles.saveButton} disabled={loading}>
         <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Product'}</Text>
       </TouchableOpacity>
 
       {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}
+
+      {/* Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{modalTitle}</Text>
+              <TouchableOpacity 
+                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Search Bar - Only show for category, brand, unit */}
+            {(modalType === 'category' || modalType === 'brand' || modalType === 'unit') && (
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={`Search ${modalTitle.toLowerCase()}...`}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  clearButtonMode="while-editing"
+                />
+                {searchQuery ? (
+                  <TouchableOpacity onPress={clearSearch} style={styles.clearSearchButton}>
+                    <Ionicons name="close-circle" size={20} color="#999" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+            
+            <FlatList
+              data={filteredData}
+              renderItem={renderModalItem}
+              keyExtractor={(item) => String(item.id)}
+              contentContainerStyle={
+                filteredData.length === 0 
+                  ? styles.modalListContentEmpty 
+                  : styles.modalListContent
+              }
+              ListEmptyComponent={renderEmptyModal}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -360,25 +628,45 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
+  fieldGroup: {
+    marginBottom: 16,
+  },
   label: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
     color: '#333',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 16,
+    backgroundColor: '#F8F9FA',
   },
-  pickerContainer: {
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+  modalTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+  },
+  modalTriggerText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  modalTriggerPlaceholder: {
+    fontSize: 16,
+    color: '#6B7280',
   },
   uploadButton: {
     flexDirection: 'row',
@@ -387,8 +675,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#007AFF',
     borderRadius: 8,
-    paddingVertical: 10,
-    marginBottom: 10,
+    paddingVertical: 12,
     backgroundColor: '#F0F7FF',
   },
   uploadButtonText: {
@@ -422,7 +709,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#007AFF',
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
@@ -433,15 +720,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   errorText: {
-    color: 'red',
-    marginBottom: 8,
+    color: '#FF3B30',
     fontSize: 13,
+    marginTop: 4,
   },
   globalError: {
     color: '#fff',
     backgroundColor: '#FF3B30',
     textAlign: 'center',
-    padding: 8,
+    padding: 12,
     borderRadius: 6,
     marginTop: 10,
   },
@@ -449,5 +736,89 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  clearSearchButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  modalListContent: {
+    paddingBottom: 16,
+  },
+  modalListContentEmpty: {
+    paddingBottom: 16,
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  selectedModalItem: {
+    backgroundColor: '#F0F8FF',
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  emptyModal: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyModalText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+    textAlign: 'center',
   },
 });

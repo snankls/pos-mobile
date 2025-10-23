@@ -17,7 +17,6 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import { Picker } from '@react-native-picker/picker';
 
 interface Unit {
   id: number;
@@ -32,7 +31,7 @@ export default function UnitsScreen() {
   const navigation = useNavigation();
 
   const perPage = 20;
-  const [allRecords, setallRecords] = useState<Unit[]>([]);
+  const [allRecords, setAllRecords] = useState<Unit[]>([]);
   const [records, setRecords] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,6 +43,8 @@ export default function UnitsScreen() {
 
   // Modal & editing states
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusOptions, setStatusOptions] = useState<any[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Unit | null>(null);
   const [editName, setEditName] = useState('');
   const [editStatus, setEditStatus] = useState('Active');
@@ -54,11 +55,35 @@ export default function UnitsScreen() {
 
   useEffect(() => {
     fetchRecords();
+    fetchStatus();
   }, []);
 
   useEffect(() => {
-    updatePageRcord(allRecords, page, perPage);
+    updatePageRecords(allRecords, page, perPage);
   }, [page, perPage, allRecords]);
+
+  const fetchStatus = async () => {
+    if (!token) return logout();
+
+    try {
+      const res = await axios.get(`${API_URL}/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.data && typeof res.data.data === 'object') {
+        const statusData = res.data.data;
+        const statusArray = Object.entries(statusData).map(([key, value]) => ({
+          id: key,
+          key: key,
+          value: value
+        }));
+        setStatusOptions(statusArray);
+      }
+    } catch (err: any) {
+      console.error('Fetch status error:', err);
+      if (err.response?.status === 401) logout();
+    }
+  };
 
   const fetchRecords = async () => {
     if (!token) return logout();
@@ -75,10 +100,10 @@ export default function UnitsScreen() {
         else setError(res.data.message);
       } else {
         const recordsData = res.data.data || res.data.records || res.data;
-        setallRecords(recordsData || []);
+        setAllRecords(recordsData || []);
         setTotalItems(recordsData?.length || 0);
         setTotalPages(Math.ceil((recordsData?.length || 0) / perPage));
-        updatePageRcord(recordsData, page, perPage);
+        updatePageRecords(recordsData, page, perPage);
       }
     } catch (err: any) {
       console.error('Fetch records error:', err);
@@ -90,7 +115,7 @@ export default function UnitsScreen() {
     }
   };
 
-  const updatePageRcord = (all: Unit[], currentPage: number, perPageCount: number) => {
+  const updatePageRecords = (all: Unit[], currentPage: number, perPageCount: number) => {
     const startIndex = (currentPage - 1) * perPageCount;
     const endIndex = startIndex + perPageCount;
     setRecords(all.slice(startIndex, endIndex));
@@ -105,7 +130,7 @@ export default function UnitsScreen() {
   const saveRecord = async () => {
     try {
       setUpdating(true);
-      setValidationError(''); // clear previous errors
+      setValidationError('');
 
       if (!editName.trim()) {
         setValidationError('Please enter a name.');
@@ -126,19 +151,13 @@ export default function UnitsScreen() {
         });
       }
 
-      const message =
-        res.data?.message || 'Operation completed successfully';
-      const isSuccess =
-        res.data?.status === 'success' ||
-        res.data?.success === true ||
-        message.toLowerCase().includes('success');
+      const message = res.data?.message || 'Operation completed successfully';
+      const isSuccess = res.data?.status === 'success' || message.toLowerCase().includes('success');
 
       if (isSuccess) {
         setEditModalVisible(false);
         await fetchRecords();
-        setEditName('');
-        setEditStatus('Active');
-        setSelectedRecord(null);
+        resetForm();
       } else {
         setValidationError(message || 'Something went wrong.');
       }
@@ -154,10 +173,15 @@ export default function UnitsScreen() {
     }
   };
 
-  const handleAdd = () => {
-    setSelectedRecord(null);
+  const resetForm = () => {
     setEditName('');
     setEditStatus('Active');
+    setSelectedRecord(null);
+    setValidationError('');
+  };
+
+  const handleAdd = () => {
+    resetForm();
     setIsEditing(false);
     setEditModalVisible(true);
   };
@@ -190,35 +214,18 @@ export default function UnitsScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'active':
-        return '#34C759';
-      case 'inactive':
-        return '#FF3B30';
-      case 'pending':
-        return '#ff3366';
-      default:
-        return '#8E8E93';
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      default: return '#8E8E93';
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return 'Active';
-      case 'inactive':
-        return 'Inactive';
-      default:
-        return status || 'Unknown';
-    }
-  };
-
-  // ✅ Define consistent column widths & labels
   const COLUMN_WIDTHS = {
     id: 60,
     name: 200,
     status: 120,
     created_by: 120,
-    actions: 100,
+    actions: 80,
   };
 
   const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
@@ -232,13 +239,8 @@ export default function UnitsScreen() {
   const TableHeader = () => (
     <View style={styles.tableHeader}>
       {Object.keys(COLUMN_WIDTHS).map((key) => (
-        <View
-          key={key}
-          style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}
-        >
-          <Text style={styles.headerText}>
-            {COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}
-          </Text>
+        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
+          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
         </View>
       ))}
     </View>
@@ -246,29 +248,13 @@ export default function UnitsScreen() {
 
   const TableRow = ({ item }: { item: Unit }) => (
     <View style={styles.tableRow}>
-      {/* ID */}
-      <View style={{ width: COLUMN_WIDTHS.id }}>
-        <Text style={styles.cellText}>{item.id}</Text>
-      </View>
-
-      {/* Name */}
-      <View style={{ width: COLUMN_WIDTHS.name }}>
-        <Text style={styles.cellText}>{item.name}</Text>
-      </View>
-
-      {/* Status */}
+      <View style={{ width: COLUMN_WIDTHS.id }}><Text style={styles.cellText}>{item.id}</Text></View>
+      <View style={{ width: COLUMN_WIDTHS.name }}><Text style={styles.cellText}>{item.name}</Text></View>
       <View style={{ width: COLUMN_WIDTHS.status }}>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(item.status) },
-          ]}
-        >
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{item.status}</Text>
         </View>
       </View>
-
-      {/* Created By (optional if your API returns it) */}
       <View style={{ width: COLUMN_WIDTHS.created_by }}>
         <Text style={styles.cellText}>
           {item.created_by ?? '—'}
@@ -276,20 +262,12 @@ export default function UnitsScreen() {
           {item.created_at ? item.created_at.split('T')[0] : ''}
         </Text>
       </View>
-
-      {/* Actions */}
       <View style={{ width: COLUMN_WIDTHS.actions }}>
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            onPress={() => handleEdit(item)}
-            style={[styles.actionButton, styles.editButton]}
-          >
+          <TouchableOpacity onPress={() => handleEdit(item)} style={[styles.actionButton, styles.editButton]}>
             <Ionicons name="create-outline" size={18} color="#007AFF" />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleDelete(item)}
-            style={[styles.actionButton, styles.deleteButton]}
-          >
+          <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionButton, styles.deleteButton]}>
             <Ionicons name="trash-outline" size={18} color="#FF3B30" />
           </TouchableOpacity>
         </View>
@@ -362,77 +340,104 @@ export default function UnitsScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <FlatList
-              data={records}
-              renderItem={({ item }) => <TableRow item={item} />}
-              keyExtractor={(item) => item.id.toString()}
-              ListHeaderComponent={<TableHeader />}
-              ListFooterComponent={<Pagination />}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={['#007AFF']}
-                />
-              }
-              contentContainerStyle={{ paddingBottom: 40 }}
-            />
-          </ScrollView>
-        </>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <FlatList
+            data={records}
+            renderItem={({ item }) => <TableRow item={item} />}
+            keyExtractor={(item) => item.id.toString()}
+            ListHeaderComponent={<TableHeader />}
+            ListFooterComponent={<Pagination />}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
+            }
+            contentContainerStyle={{ paddingBottom: 40 }}
+          />
+        </ScrollView>
       )}
 
-      {/* Unified Add/Edit Modal */}
-      <Modal
-        visible={editModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
+      {/* Add/Edit Modal */}
+      <Modal visible={editModalVisible} animationType="slide" transparent onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <TouchableOpacity 
-              onPress={() => setEditModalVisible(false)} 
-              style={styles.closeIcon}
-            >
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-
-            <Text style={styles.modalTitle}>
-              {isEditing ? 'Edit Record' : 'Add Record'}
-            </Text>
-
-            <Text style={styles.modalLabel}>Name</Text>
-            <TextInput style={styles.input} value={editName} onChangeText={setEditName} />
-
-            <Text style={styles.modalLabel}>Status</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={editStatus}
-                onValueChange={(value) => setEditStatus(value)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Active" value="Active" />
-                <Picker.Item label="Inactive" value="Inactive" />
-              </Picker>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{isEditing ? 'Edit Unit' : 'Add Unit'}</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.modalButtons}>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Name *</Text>
+                <TextInput
+                  style={[styles.input, validationError && styles.inputError]}
+                  value={editName}
+                  onChangeText={setEditName}
+                />
+                {validationError && <Text style={styles.errorText}>{validationError}</Text>}
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Status *</Text>
+                <TouchableOpacity 
+                  style={styles.modalTrigger}
+                  onPress={() => setStatusModalVisible(true)}
+                >
+                  <Text style={editStatus ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+                    {editStatus || 'Select Status'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
                 style={[styles.saveButton, updating && styles.saveButtonDisabled]}
                 onPress={saveRecord}
                 disabled={updating}
               >
-                <Text style={styles.saveButtonText}>{updating ? 'Saving...' : isEditing ? 'Update' : 'Save Changing'}</Text>
+                {updating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {isEditing ? 'Update Unit' : 'Add Unit'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Status Selection Modal */}
+      <Modal visible={statusModalVisible} transparent animationType="slide" onRequestClose={() => setStatusModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Status</Text>
+              <TouchableOpacity onPress={() => setStatusModalVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
 
-            <View>
-              {validationError ? (
-                <Text style={styles.errorText}>{validationError}</Text>
-              ) : null}
-            </View>
+            <FlatList
+              data={statusOptions}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.modalItem, editStatus === item.key && styles.selectedModalItem]}
+                  onPress={() => {
+                    setEditStatus(item.key);
+                    setStatusModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.modalItemText}>{item.value}</Text>
+                  {editStatus === item.key && (
+                    <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.modalListContent}
+            />
           </View>
         </View>
       </Modal>
@@ -441,117 +446,68 @@ export default function UnitsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
+  container: { flex: 1, backgroundColor: '#fff' },
+  headerRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA'
   },
-  closeIcon: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
-    zIndex: 1,
-    padding: 5,
+  title: { fontSize: 22, fontWeight: 'bold', color: '#1C1C1E' },
+  addButton: { 
+    backgroundColor: '#007AFF', 
+    paddingHorizontal: 16,
+    paddingVertical: 8, 
+    borderRadius: 8 
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  addButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  
+  // Table Styles
   tableHeader: { 
     flexDirection: 'row', 
-    padding: 10, 
-    backgroundColor: '#f0f0f0', 
+    padding: 12, 
+    backgroundColor: '#F8F9FA', 
     borderBottomWidth: 1, 
-    borderBottomColor: '#ccc' 
-  },
-  headerCell: { 
-    justifyContent: 'center' 
-  },
-  headerText: { 
-    fontWeight: 'bold', 
-    fontSize: 14, 
-    color: '#333' 
+    borderBottomColor: '#E5E5EA',
+    minWidth: 600 
   },
   tableRow: { 
     flexDirection: 'row', 
-    padding: 10, 
+    padding: 12, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#eee', 
-    alignItems: 'center' 
+    borderBottomColor: '#F2F2F7', 
+    alignItems: 'center', 
+    minWidth: 600 
   },
-  cell: { 
-    justifyContent: 'center' 
-  },
-  cellText: { 
-    fontSize: 14, 
-    color: '#333' 
-  },
-  unitName: { 
-    fontWeight: '600' 
-  },
+  headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E' },
+  cellText: { fontSize: 14, color: '#1C1C1E' },
   statusBadge: { 
     paddingHorizontal: 8, 
-    paddingVertical: 2, 
+    paddingVertical: 4, 
     borderRadius: 12, 
     alignSelf: 'flex-start' 
   },
-  statusText: { 
-    color: '#fff', 
-    fontSize: 12, 
-    fontWeight: 'bold' 
-  },
-  actionButtons: { 
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionButton: {
-    flexDirection: 'row',
+  statusText: { color: '#fff', fontWeight: '600', fontSize: 12 },
+  actionButtons: { flexDirection: 'row', gap: 8 },
+  actionButton: { 
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: 6,
   },
-  editButton: {
-    backgroundColor: '#E8F2FF',
-  },
-  deleteButton: {
-    backgroundColor: '#FFEAEA',
-  },
+  editButton: { backgroundColor: '#E8F2FF' },
+  deleteButton: { backgroundColor: '#FFEAEA' },
+  
+  // Error Styles
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorText: { color: '#FF3B30', fontSize: 16, textAlign: 'center', marginVertical: 12 },
+  retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryButtonText: { color: '#fff', fontWeight: '600' },
+  
   pagination: { 
     marginTop: 15,
     marginBottom: 30,
@@ -566,12 +522,16 @@ const styles = StyleSheet.create({
     color: '#555' 
   },
   paginationControls: { 
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 20,
-},
-
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+  },
+  pageIndicatorText: { 
+    fontSize: 14, 
+    color: '#333', 
+    marginHorizontal: 10 
+  },
   pageButton: { 
     flexDirection: 'row', 
     alignItems: 'center' 
@@ -584,90 +544,86 @@ const styles = StyleSheet.create({
     color: '#007AFF', 
     marginHorizontal: 4 
   },
-  pageIndicatorText: { 
-    fontSize: 14, 
-    color: '#333', 
-    marginHorizontal: 10 
-  },
-  errorContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  errorText: { 
-    fontSize: 16, 
-    color: '#FF3B30', 
-    textAlign: 'center', 
-    marginVertical: 10 
-  },
-  retryButton: { 
-    padding: 10, 
-    backgroundColor: '#007AFF', 
-    borderRadius: 6 
-  },
-  retryButtonText: { 
-    color: '#fff', 
-    fontWeight: 'bold' 
-  },
+
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
-  modalContainer: {
+  modalContent: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '90%',
   },
-  modalLabel: {
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 16,
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
     color: '#1C1C1E',
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 16,
     backgroundColor: '#F8F9FA',
   },
-  pickerContainer: {
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+  modalTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: '#E5E5EA',
     borderRadius: 8,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     backgroundColor: '#F8F9FA',
-    overflow: 'hidden',
   },
-  picker: {
-    height: 50,
+  modalTriggerText: {
+    color: '#1C1C1E',
+    fontSize: 16,
   },
-  modalButtons: {
-    width: '100%',
-    marginTop: 20,
+  modalTriggerPlaceholder: {
+    color: '#8E8E93',
+    fontSize: 16,
   },
   saveButton: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 8,
     backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 20,
   },
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',
@@ -676,12 +632,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  errorMessage: { 
-    fontSize: 16, 
-    color: '#FF3B30', 
-    textAlign: 'center', 
-    marginVertical: 10 
+  modalListContent: {
+    paddingBottom: 16,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  selectedModalItem: {
+    backgroundColor: '#F0F8FF',
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
   },
 });

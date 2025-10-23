@@ -14,11 +14,13 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 export default function CompaniesScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
   const { token } = useAuth();
+  const router = useRouter();
 
   const [company, setCompany] = useState<any>({
     id: '',
@@ -29,6 +31,7 @@ export default function CompaniesScreen() {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [formErrors, setFormErrors] = useState<any>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [globalErrorMessage, setGlobalErrorMessage] = useState('');
@@ -40,7 +43,7 @@ export default function CompaniesScreen() {
 
   const fetchCompany = async () => {
     try {
-      setIsLoading(true);
+      setFetching(true);
 
       const res = await axios.get(`${API_URL}/user/companies`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -76,14 +79,17 @@ export default function CompaniesScreen() {
       console.error('Fetch error:', error.response?.data || error.message);
       setGlobalErrorMessage('Failed to load company data.');
     } finally {
-      setIsLoading(false);
+      setFetching(false);
     }
   };
 
   const handleFileSelected = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) return;
+      if (!permissionResult.granted) {
+        console.log('Permission Denied', 'Please allow photo access to upload images.');
+        return;
+      }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -99,17 +105,25 @@ export default function CompaniesScreen() {
       }
     } catch (error) {
       console.error('Image picker error:', error);
+      setGlobalErrorMessage('Failed to pick image.');
     }
   };
 
   const handleInputChange = (field: string, value: string) => {
     setCompany({ ...company, [field]: value });
     setFormErrors({ ...formErrors, [field]: '' });
+    setGlobalErrorMessage('');
+    setSuccessMessage('');
   };
 
   const updateRecord = async () => {
     if (!company.id) {
       setGlobalErrorMessage('No company record found to update.');
+      return;
+    }
+
+    if (!company.name?.trim()) {
+      setFormErrors({ name: ['Company name is required'] });
       return;
     }
 
@@ -120,8 +134,8 @@ export default function CompaniesScreen() {
 
     try {
       const formData = new FormData();
-      formData.append('name', company.name || '');
-      formData.append('description', company.description || '');
+      formData.append('name', company.name?.trim() || '');
+      formData.append('description', company.description?.trim() || '');
       formData.append('_method', 'PUT');
 
       if (imagePreview && imagePreview.startsWith('file')) {
@@ -133,7 +147,7 @@ export default function CompaniesScreen() {
         } as any);
       }
 
-      await axios.post(`${API_URL}/companies/${company.id}`, formData, {
+      const response = await axios.post(`${API_URL}/companies/${company.id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
@@ -141,91 +155,185 @@ export default function CompaniesScreen() {
         },
       });
 
-      setSuccessMessage('Company updated successfully!');
+      setSuccessMessage(response.data?.message || 'Company updated successfully!');
       fetchCompany();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+
     } catch (error: any) {
       console.error('Update error:', error.response?.data || error.message);
       if (error.response?.status === 422) {
         setFormErrors(error.response.data.errors || {});
       } else {
-        setGlobalErrorMessage(error.response?.data?.message || 'Update failed.');
+        setGlobalErrorMessage(error.response?.data?.message || 'Failed to update company. Please try again.');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isLoading && !company.id) {
+  if (fetching) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loaderText}>Loading company data...</Text>
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Ionicons name="business-outline" size={50} color="#007AFF" />
-      <Text style={styles.title}>Edit Company</Text>
+      <View style={styles.header}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="business-outline" size={60} color="#007AFF" />
+        </View>
+        <Text style={styles.title}>Edit Company</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       {/* Company Name */}
-      <Text style={styles.label}>Company Name *</Text>
-      <TextInput
-        style={styles.input}
-        value={company.name || ''}
-        onChangeText={(text) => handleInputChange('name', text)}
-      />
-      {formErrors.name && <Text style={styles.error}>{formErrors.name[0]}</Text>}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Company Name *</Text>
+        <TextInput
+          style={[styles.input, formErrors.name && styles.inputError]}
+          value={company.name || ''}
+          onChangeText={(text) => handleInputChange('name', text)}
+        />
+        {formErrors.name && <Text style={styles.errorText}>{formErrors.name[0]}</Text>}
+      </View>
 
       {/* Description */}
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={[styles.input, { height: 100 }]}
-        value={company.description || ''}
-        onChangeText={(text) => handleInputChange('description', text)}
-        multiline
-      />
-      {formErrors.description && <Text style={styles.error}>{formErrors.description[0]}</Text>}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          style={[styles.input, styles.textArea, formErrors.description && styles.inputError]}
+          value={company.description || ''}
+          onChangeText={(text) => handleInputChange('description', text)}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+        {formErrors.description && <Text style={styles.errorText}>{formErrors.description[0]}</Text>}
+      </View>
 
       {/* Image Upload */}
-      <Text style={styles.label}>Company Image</Text>
-      <TouchableOpacity style={styles.uploadButton} onPress={handleFileSelected}>
-        <Ionicons name="image-outline" size={20} color="#007AFF" />
-        <Text style={styles.uploadButtonText}>Select Image</Text>
-      </TouchableOpacity>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Company Image</Text>
+        <TouchableOpacity 
+          style={styles.uploadButton} 
+          onPress={handleFileSelected}
+          disabled={isLoading}
+        >
+          <Ionicons name="image-outline" size={20} color="#007AFF" />
+          <Text style={styles.uploadButtonText}>Select Image</Text>
+        </TouchableOpacity>
 
-      {imagePreview && (
-        <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: imagePreview }} style={styles.preview} />
-        </View>
-      )}
+        {imagePreview && (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: imagePreview }} style={styles.previewImage} resizeMode="cover" />
+          </View>
+        )}
+      </View>
 
+      {/* Submit Button */}
       <TouchableOpacity
-        style={[styles.submitButton, isLoading && { opacity: 0.6 }]}
+        style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
         onPress={updateRecord}
         disabled={isLoading}
       >
-        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Save Changes</Text>}
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
       </TouchableOpacity>
 
-      {globalErrorMessage ? <Text style={styles.globalError}>{globalErrorMessage}</Text> : null}
-      {successMessage ? <Text style={styles.success}>{successMessage}</Text> : null}
+      {/* Global Messages */}
+      {globalErrorMessage ? (
+        <View style={styles.globalErrorContainer}>
+          <Ionicons name="warning-outline" size={20} color="#fff" />
+          <Text style={styles.globalError}>{globalErrorMessage}</Text>
+        </View>
+      ) : null}
+
+      {successMessage ? (
+        <View style={styles.successContainer}>
+          <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+          <Text style={styles.success}>{successMessage}</Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  loaderText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
   },
   container: {
     flexGrow: 1,
     padding: 16,
     backgroundColor: '#fff',
+  },
+  header: {
     alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000',
+  },
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  fieldGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+    color: '#333',
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginTop: 6,
+    marginLeft: 4,
   },
   uploadButton: {
     flexDirection: 'row',
@@ -234,75 +342,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#007AFF',
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 8,
-    width: '100%',
+    paddingVertical: 14,
     backgroundColor: '#F0F7FF',
   },
   uploadButtonText: {
     color: '#007AFF',
     fontSize: 16,
-    fontWeight: '500',
     marginLeft: 8,
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
-    width: '100%',
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
     fontWeight: '600',
   },
-  imagePreviewContainer: {
+  imageContainer: {
+    position: 'relative',
+    width: 120,
+    height: 120,
+    marginTop: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+  },
+  previewImage: {
     width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
     marginTop: 10,
-    alignItems: 'flex-start',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  preview: {
-    width: 150,
-    height: 150,
-    borderRadius: 6,
-    marginTop: 12,
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginVertical: 16,
-    color: '#007AFF',
-  },
-  label: {
-    alignSelf: 'flex-start',
+  saveButtonText: {
+    color: '#fff',
     fontSize: 16,
-    marginTop: 12,
+    fontWeight: '700',
   },
-  input: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  error: {
-    color: '#ff3b30',
-    alignSelf: 'flex-start',
-    marginTop: 4,
+  globalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
   },
   globalError: {
-    color: '#ff3b30',
-    marginVertical: 8,
-    textAlign: 'center',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#34C759',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
   },
   success: {
-    color: 'green',
-    marginVertical: 8,
-    textAlign: 'center',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 });

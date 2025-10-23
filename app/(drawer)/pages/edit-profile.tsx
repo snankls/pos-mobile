@@ -8,7 +8,6 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Modal,
   FlatList,
 } from 'react-native';
@@ -18,6 +17,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import LoadingScreen from '../../components/LoadingScreen';
 
 export default function EditProfileScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -47,7 +47,8 @@ export default function EditProfileScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<any>({});
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(true);
   const [successMsg, setSuccessMsg] = useState('');
   const [globalError, setGlobalError] = useState('');
@@ -57,24 +58,14 @@ export default function EditProfileScreen() {
   const [genderModalVisible, setGenderModalVisible] = useState(false);
   const [citySearch, setCitySearch] = useState('');
 
-  // 🔹 Load current user and cities
+  // 🔹 Load current user and cities initially
   useEffect(() => {
     if (token) {
-      Promise.all([fetchCurrentUser(), fetchCities()]);
+      Promise.all([fetchCurrentUser(), fetchCities()]).finally(() => {
+        setLoading(false); // ✅ hide loader after both finish
+      });
     }
   }, [token]);
-
-  // 🔹 Filter cities based on search
-  useEffect(() => {
-    if (citySearch) {
-      const filtered = cities.filter(city =>
-        city.name.toLowerCase().includes(citySearch.toLowerCase())
-      );
-      setFilteredCities(filtered);
-    } else {
-      setFilteredCities(cities);
-    }
-  }, [citySearch, cities]);
 
   // 🔹 Fetch user from current-user API
   const fetchCurrentUser = async () => {
@@ -97,20 +88,12 @@ export default function EditProfileScreen() {
         address: user.address || '',
       });
 
-      // ✅ Set image preview if user has an image
-      const imageUrl = user?.images?.image_name
-        ? `${IMAGE_URL}/uploads/users/${user.images.image_name}`
-        : null;
-
-      if (imageUrl) {
-        setImagePreview(imageUrl);
+      if (user?.images?.image_name) {
+        setImagePreview(`${IMAGE_URL}/uploads/users/${user.images.image_name}`);
       }
-
     } catch (err: any) {
       console.error('Error loading current user:', err.response?.data || err.message);
       setGlobalError('Failed to load user data.');
-    } finally {
-      setFetching(false);
     }
   };
 
@@ -127,6 +110,9 @@ export default function EditProfileScreen() {
       console.error('Error loading cities:', err.response?.data || err.message);
     }
   };
+
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   // 🔹 Handle input change
   const handleChange = (field: string, value: string) => {
@@ -256,154 +242,167 @@ export default function EditProfileScreen() {
     }
   };
 
-  if (fetching) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={{ marginTop: 10 }}>Loading profile...</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.title}>Edit Profile</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Edit Profile</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       {/* First Name */}
-      <Text style={styles.label}>First Name *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.first_name}
-        onChangeText={(text) => handleChange('first_name', text)}
-      />
-      {errors.first_name && <Text style={styles.error}>{errors.first_name[0]}</Text>}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>First Name *</Text>
+        <TextInput
+          style={[styles.input, errors.first_name && styles.inputError]}
+          value={form.first_name}
+          onChangeText={(text) => handleChange('first_name', text)}
+        />
+        {errors.first_name && <Text style={styles.errorText}>{errors.first_name[0]}</Text>}
+      </View>
 
       {/* Last Name */}
-      <Text style={styles.label}>Last Name *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.last_name}
-        onChangeText={(text) => handleChange('last_name', text)}
-      />
-      {errors.last_name && <Text style={styles.error}>{errors.last_name[0]}</Text>}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Last Name *</Text>
+        <TextInput
+          style={[styles.input, errors.last_name && styles.inputError]}
+          value={form.last_name}
+          onChangeText={(text) => handleChange('last_name', text)}
+        />
+        {errors.last_name && <Text style={styles.errorText}>{errors.last_name[0]}</Text>}
+      </View>
 
       {/* Username */}
-      <Text style={styles.label}>Username *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.username}
-        onChangeText={(text) => handleChange('username', text)}
-      />
-      {errors.username && <Text style={styles.error}>{errors.username[0]}</Text>}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Username *</Text>
+        <TextInput
+          style={[styles.input, errors.username && styles.inputError]}
+          value={form.username}
+          onChangeText={(text) => handleChange('username', text)}
+        />
+        {errors.username && <Text style={styles.errorText}>{errors.username[0]}</Text>}
+      </View>
 
       {/* Email */}
-      <Text style={styles.label}>Email Address *</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: '#F3F4F6' }]}
-        editable={false}
-        value={form.email}
-      />
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Email Address *</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: '#F3F4F6' }]}
+          editable={false}
+          value={form.email}
+        />
+      </View>
 
       {/* Date of Birth */}
-      <Text style={styles.label}>Date of Birth *</Text>
-      <TouchableOpacity 
-        style={styles.input}
-        onPress={showDatepicker}
-      >
-        <Text style={form.date_of_birth ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
-          {form.date_of_birth || 'YYYY-MM-DD'}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Date of Birth</Text>
+        <TouchableOpacity 
+          style={styles.modalTrigger}
+          onPress={showDatepicker}
+        >
+          <Text style={form.date_of_birth ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {form.date_of_birth || 'YYYY-MM-DD'}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+          />
+        )}
+      </View>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
-      )}
-      
-      {/* Select City - Modal Version */}
-      <Text style={styles.label}>Select City</Text>
-      <TouchableOpacity 
-        style={styles.modalTrigger}
-        onPress={() => setCityModalVisible(true)}
-      >
-        <Text style={form.city_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
-          {getSelectedCityName()}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color="#6B7280" />
-      </TouchableOpacity>
+      {/* Select City */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Select City</Text>
+        <TouchableOpacity 
+          style={styles.modalTrigger}
+          onPress={() => setCityModalVisible(true)}
+        >
+          <Text style={form.city_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {getSelectedCityName()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
 
-      {/* Gender - Modal Version */}
-      <Text style={styles.label}>Select Gender *</Text>
-      <TouchableOpacity 
-        style={styles.modalTrigger}
-        onPress={() => setGenderModalVisible(true)}
-      >
-        <Text style={form.gender ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
-          {form.gender || 'Select Gender'}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color="#6B7280" />
-      </TouchableOpacity>
+      {/* Gender */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Select Gender *</Text>
+        <TouchableOpacity 
+          style={styles.modalTrigger}
+          onPress={() => setGenderModalVisible(true)}
+        >
+          <Text style={form.gender ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {form.gender || 'Select Gender'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
 
       {/* Phone */}
-      <Text style={styles.label}>Phone Number</Text>
-      <TextInput
-        style={styles.input}
-        value={form.phone_number}
-        onChangeText={(text) => handleChange('phone_number', text)}
-      />
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Phone Number</Text>
+        <TextInput
+          style={[styles.input, errors.phone_number && styles.inputError]}
+          value={form.phone_number}
+          onChangeText={(text) => handleChange('phone_number', text)}
+        />
+        {errors.phone_number && <Text style={styles.errorText}>{errors.phone_number[0]}</Text>}
+      </View>
 
       {/* Address */}
-      <Text style={styles.label}>Address</Text>
-      <TextInput
-        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-        multiline
-        value={form.address}
-        onChangeText={(text) => handleChange('address', text)}
-      />
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Address</Text>
+        <TextInput
+          style={[styles.input, { height: 80 }, errors.address && styles.inputError]}
+          multiline
+          value={form.address}
+          onChangeText={(text) => handleChange('address', text)}
+        />
+        {errors.address && <Text style={styles.errorText}>{errors.address[0]}</Text>}
+      </View>
 
       {/* Image Upload */}
-      <Text style={styles.label}>Upload Image</Text>
-      <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-        <Ionicons name="image-outline" size={20} color="#007AFF" />
-        <Text style={styles.uploadButtonText}>Upload Image</Text>
-      </TouchableOpacity>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Profile Image</Text>
+        <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+          <Ionicons name="image-outline" size={20} color="#007AFF" />
+          <Text style={styles.uploadButtonText}>Upload Image</Text>
+        </TouchableOpacity>
 
-      {imagePreview && (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: imagePreview }}
-            style={styles.previewImage}
-            resizeMode="cover"
-          />
-          <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
-            <Ionicons name="close-circle" size={26} color="red" />
-          </TouchableOpacity>
-        </View>
-      )}
+        {imagePreview && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: imagePreview }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+            <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
+              <Ionicons name="close-circle" size={26} color="red" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
-      {/* Submit */}
+      {/* Submit Button */}
       <TouchableOpacity
-        style={[styles.button, loading && { opacity: 0.7 }]}
+        style={[styles.saveButton, loading && { opacity: 0.6 }]}
         onPress={handleSubmit}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <>
-            <Ionicons name="save-outline" size={18} color="#fff" />
-            <Text style={styles.buttonText}>Save Changes</Text>
-          </>
+          <Text style={styles.saveButtonText}>Save Changes</Text>
         )}
       </TouchableOpacity>
 
-      {globalError ? <Text style={[styles.message, styles.errorText]}>{globalError}</Text> : null}
-      {successMsg ? <Text style={[styles.message, styles.successText]}>{successMsg}</Text> : null}
+      {/* Global Messages */}
+      {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}
+      {successMsg ? <Text style={styles.success}>{successMsg}</Text> : null}
 
       {/* City Selection Modal */}
       <Modal
@@ -426,16 +425,15 @@ export default function EditProfileScreen() {
                 }}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
             
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search cities..."
-                placeholderTextColor="#999"
                 value={citySearch}
                 onChangeText={setCitySearch}
                 autoCapitalize="none"
@@ -462,9 +460,7 @@ export default function EditProfileScreen() {
                   ]}
                   onPress={() => handleCitySelect(item)}
                 >
-                  <View style={styles.cityInfo}>
-                    <Text style={styles.cityName}>{item.name}</Text>
-                  </View>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
                   {form.city_id === String(item.id) && (
                     <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
                   )}
@@ -472,16 +468,15 @@ export default function EditProfileScreen() {
               )}
               ListEmptyComponent={
                 <View style={styles.emptyModal}>
-                  <Ionicons name="location-outline" size={50} color="#ccc" />
+                  <Ionicons name="search-outline" size={48} color="#999" />
                   <Text style={styles.emptyModalText}>
-                    {citySearch ? 'No cities found' : 'No cities available'}
+                    {citySearch ? 'No results found' : 'No cities available'}
                   </Text>
-                  <Text style={styles.emptyModalSubtext}>
-                    {citySearch 
-                      ? 'Try a different search term' 
-                      : 'No cities found in the system'
-                    }
-                  </Text>
+                  {citySearch && (
+                    <Text style={[styles.emptyModalText, { fontSize: 14 }]}>
+                      Try searching with different keywords
+                    </Text>
+                  )}
                 </View>
               }
               contentContainerStyle={filteredCities.length === 0 ? styles.modalListContentEmpty : styles.modalListContent}
@@ -505,7 +500,7 @@ export default function EditProfileScreen() {
                 onPress={() => setGenderModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -536,37 +531,84 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 15 },
-  label: { fontSize: 14, marginBottom: 4, color: '#374151' },
+  container: {
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  title: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000',
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 6,
+    color: '#333',
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
   },
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
   },
   modalTriggerText: {
-    color: '#374151',
     fontSize: 16,
+    color: '#1C1C1E',
   },
   modalTriggerPlaceholder: {
-    color: '#9CA3AF',
     fontSize: 16,
+    color: '#6B7280',
   },
-  error: { color: '#DC2626', fontSize: 12, marginBottom: 8 },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    backgroundColor: '#F0F7FF',
+  },
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
   imageContainer: {
     position: 'relative',
     width: 150,
@@ -590,44 +632,40 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 1 },
   },
-  uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#007AFF',
+  saveButton: {
+    backgroundColor: '#007AFF',
+    padding: 16,
     borderRadius: 8,
-    paddingVertical: 10,
-    marginBottom: 10,
-    backgroundColor: '#F0F7FF',
-  },
-  uploadButtonText: {
-    color: '#007AFF',
-    fontSize: 15,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 15,
+    marginTop: 10,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  message: { textAlign: 'center', marginTop: 10 },
-  errorText: { color: '#DC2626' },
-  successText: { color: '#16A34A' },
-  loader: {
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  globalError: {
+    color: '#fff',
+    backgroundColor: '#FF3B30',
+    textAlign: 'center',
+    padding: 12,
+    borderRadius: 6,
+    marginTop: 10,
+  },
+  success: {
+    color: '#fff',
+    backgroundColor: '#34C759',
+    textAlign: 'center',
+    padding: 12,
+    borderRadius: 6,
+    marginTop: 10,
+  },
+  loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
-  // Modal Styles from your provided stylesheet
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -645,12 +683,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E5E5EA',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1C1C1E',
   },
   closeButton: {
     padding: 4,
@@ -660,7 +698,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E5E5EA',
   },
   searchIcon: {
     marginRight: 8,
@@ -672,7 +710,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#E5E5EA',
   },
   clearSearchButton: {
     padding: 4,
@@ -692,23 +730,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#F2F2F7',
   },
   selectedModalItem: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#F0F8FF',
   },
   modalItemText: {
     fontSize: 16,
-    color: '#333',
-  },
-  cityInfo: {
-    flex: 1,
-  },
-  cityName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 2,
+    color: '#1C1C1E',
   },
   emptyModal: {
     alignItems: 'center',
@@ -718,12 +747,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 12,
-    textAlign: 'center',
-  },
-  emptyModalSubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 4,
     textAlign: 'center',
   },
 });

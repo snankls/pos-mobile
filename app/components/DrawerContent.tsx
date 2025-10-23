@@ -1,4 +1,3 @@
-// components/DrawerContent.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -11,8 +10,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { usePathname } from 'expo-router';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 
 interface MenuItem {
   id: string;
@@ -24,22 +23,14 @@ interface MenuItem {
 }
 
 const menuData: MenuItem[] = [
-  { id: 'category-main', title: 'Main', category: true, icon: '' },
   {
     id: 'dashboard',
     title: 'Dashboard',
     icon: 'grid-outline',
     route: 'dashboard',
   },
-  
-  { id: 'category-companies', title: 'Companies', category: true, icon: '' },
-  {
-    id: 'companies',
-    title: 'Company',
-    icon: 'business-outline',
-    route: 'companies',
-  },
-  
+
+  { id: 'category-sales', title: 'Sales', category: true, icon: '' },
   {
     id: 'invoices',
     title: 'Invoices',
@@ -50,7 +41,14 @@ const menuData: MenuItem[] = [
       { id: 'invoices-returns', title: 'Returns', route: 'invoices/returns', icon: '' },
     ],
   },
-  
+  {
+    id: 'customers',
+    title: 'Customers',
+    icon: 'people-outline',
+    route: 'customers/lists',
+  },
+
+  { id: 'category-inventory', title: 'Inventory', category: true, icon: '' },
   {
     id: 'products',
     title: 'Products',
@@ -64,37 +62,40 @@ const menuData: MenuItem[] = [
       { id: 'products-stocks', title: 'Stocks', route: 'products/stocks', icon: '' },
     ],
   },
-  
+
+  { id: 'category-administration', title: 'Administration', category: true, icon: '' },
   {
-    id: 'customers',
-    title: 'Customers',
-    icon: 'people-outline',
-    route: 'customers/lists',
+    id: 'companies',
+    title: 'Company',
+    icon: 'business-outline',
+    route: 'companies',
   },
-  
   {
     id: 'banks',
     title: 'Bank A/C',
     icon: 'card-outline',
     route: 'banks',
   },
-  
   {
     id: 'cities',
     title: 'Cities',
     icon: 'location-outline',
     route: 'cities',
   },
-  
+
+  { id: 'category-reports', title: 'Reports & Analytics', category: true, icon: '' },
   {
     id: 'reports',
     title: 'Reports',
     icon: 'bar-chart-outline',
     items: [
       { id: 'reports-customers', title: 'Customers', route: 'reports/customers', icon: '' },
+      { id: 'reports-sales', title: 'Sales', route: 'reports/sales', icon: '' },
+      { id: 'reports-inventory', title: 'Inventory', route: 'reports/inventory', icon: '' },
     ],
   },
-  
+
+  { id: 'category-system', title: 'System', category: true, icon: '' },
   {
     id: 'settings',
     title: 'Settings',
@@ -104,48 +105,43 @@ const menuData: MenuItem[] = [
 ];
 
 interface DrawerContentProps {
-  navigation: any;
+  navigation?: { closeDrawer: () => void };
 }
 
-const DrawerContent = (props: DrawerContentProps) => {
+export default function DrawerContent(props: DrawerContentProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const toggleExpand = (itemId: string) => {
-    setExpandedItems((prev) => {
-      // if already expanded, collapse it
-      if (prev.has(itemId)) return new Set();
-      // otherwise, expand only this one
-      return new Set([itemId]);
-    });
+    setExpandedItems(prev =>
+      prev.has(itemId) ? new Set() : new Set([itemId])
+    );
   };
 
   const handleNavigation = (route?: string, parentId?: string) => {
-    if (route) {
-      // If clicked inside a submenu, keep its parent open
-      if (parentId) {
-        setExpandedItems(new Set([parentId]));
-      } else {
-        // If clicked outside (another main menu), collapse all
-        setExpandedItems(new Set());
-      }
+    if (!route) return;
 
-      router.push(`/(drawer)/${route}`);
-      props.navigation.closeDrawer();
-    }
+    if (parentId) setExpandedItems(new Set([parentId]));
+    else setExpandedItems(new Set());
+
+    router.push(`/(drawer)/${route}` as any);
+    props.navigation?.closeDrawer?.();
   };
 
-  const renderMenuItem = (
-    item: MenuItem & { parentId?: string },
-    level = 0
-  ) => {
+  const isActive = (route?: string) => {
+    if (!route) return false;
+    const routePath = `/(drawer)/${route}`;
+    return pathname === routePath || pathname.startsWith(routePath + '/');
+  };
+
+  const renderMenuItem = (item: MenuItem & { parentId?: string }, level = 0) => {
     if (item.category) {
       return (
         <View
           key={item.id}
-          style={[styles.categoryContainer, { paddingLeft: 16 + level * 16 }]}
+          style={[styles.categoryContainer, { paddingLeft: 16 + level * 12 }]}
         >
           <Text style={styles.categoryText}>{item.title}</Text>
         </View>
@@ -161,7 +157,7 @@ const DrawerContent = (props: DrawerContentProps) => {
         <TouchableOpacity
           style={[
             styles.menuItem,
-            { paddingLeft: 16 + level * 16 },
+            { paddingLeft: 20 + level * 16 },
             active && styles.activeMenuItem,
           ]}
           onPress={() =>
@@ -173,23 +169,23 @@ const DrawerContent = (props: DrawerContentProps) => {
           <Ionicons
             name={item.icon as any}
             size={20}
-            color={active ? "#007AFF" : "#666"}
+            color={active ? '#2563EB' : '#6B7280'}
           />
           <Text style={[styles.menuText, active && styles.activeMenuText]}>
             {item.title}
           </Text>
           {hasChildren && (
             <Ionicons
-              name={isExpanded ? "chevron-up-outline" : "chevron-down-outline"}
+              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
               size={16}
-              color={active ? "#007AFF" : "#666"}
+              color={active ? '#2563EB' : '#9CA3AF'}
             />
           )}
         </TouchableOpacity>
 
         {hasChildren && isExpanded && (
           <View style={styles.subMenu}>
-            {item.items!.map((subItem) =>
+            {item.items!.map(subItem =>
               renderMenuItem({ ...subItem, parentId: item.id }, level + 1)
             )}
           </View>
@@ -198,128 +194,137 @@ const DrawerContent = (props: DrawerContentProps) => {
     );
   };
 
-  const isActive = (route?: string) => {
-    if (!route) return false;
-    const routePath = `/(drawer)/${route}`;
-    return pathname === routePath || pathname.startsWith(routePath + '/');
-  };
-
   return (
     <View style={styles.container}>
       {Platform.OS === 'ios' && <StatusBar barStyle="light-content" />}
-      
-      {/* Header with proper status bar spacing */}
+
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <Ionicons name="person-circle-outline" size={48} color="#ffffff" />
+          <Ionicons name="person-circle-outline" size={54} color="#fff" />
           <View style={styles.userText}>
-            <Text style={styles.userName}>{user?.first_name || user?.name || 'User'}</Text>
+            <Text style={styles.userName}>
+              {user?.first_name || user?.name || 'User'}
+            </Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
           </View>
         </View>
       </View>
 
-      {/* Menu Items */}
-      <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
-        {menuData.map((item) => renderMenuItem(item))}
+      {/* Menu */}
+      <ScrollView
+        style={styles.menuContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {menuData.map(item => renderMenuItem(item))}
       </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Ionicons name="log-out-outline" size={20} color="#ff3b30" />
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
+        
+        <Text style={styles.footerText}>
+          Business Suite v{Constants.expoConfig?.version || '1.0.0'}
+        </Text>
       </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+
+  // HEADER
   header: {
-    padding: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2563EB',
+    paddingTop: 24,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 4,
   },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userText: {
-    marginLeft: 12,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  userEmail: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  menuContainer: {
-    flex: 1,
-  },
+  userInfo: { flexDirection: 'row', alignItems: 'center' },
+  userText: { marginLeft: 14 },
+  userName: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  userEmail: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 3 },
+
+  // MENU
+  menuContainer: { flex: 1, marginTop: 10 },
   categoryContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#f8f9fa',
+    paddingVertical: 10,
+    backgroundColor: '#F3F4F6',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#E5E7EB',
   },
   categoryText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: '700',
+    color: '#6B7280',
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingRight: 18,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
-  },
-  activeMenuItem: {
-    backgroundColor: '#f0f7ff',
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
+    borderBottomColor: '#F3F4F6',
   },
   menuText: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#374151',
     marginLeft: 12,
+    fontWeight: '500',
+  },
+  activeMenuItem: {
+    backgroundColor: '#EFF6FF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563EB',
   },
   activeMenuText: {
-    color: '#007AFF',
-    fontWeight: '600',
+    color: '#2563EB',
+    fontWeight: '600'
   },
   subMenu: {
-    backgroundColor: '#fafafa',
+    backgroundColor: '#F9FAFB',
+    borderLeftWidth: 2,
+    borderLeftColor: '#E5E7EB',
   },
+
+  // FOOTER
   footer: {
-    padding: 20,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#fff',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   logoutText: {
-    fontSize: 16,
-    color: '#ff3b30',
-    marginLeft: 8,
-    fontWeight: '500',
+    fontSize: 15,
+    color: '#EF4444',
+    marginLeft: 10,
+    fontWeight: '600',
+  },
+  footerText: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 6,
+    paddingHorizontal: 20,
   },
 });
-
-export default DrawerContent;

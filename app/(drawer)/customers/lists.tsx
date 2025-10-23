@@ -148,7 +148,7 @@ export default function CustomersListsScreen() {
 
   const COLUMN_WIDTHS = {
     id: 50,
-    image: 80,
+    image: 70,
     id_code: 100,
     customer_name: 180,
     mobile_number: 120,

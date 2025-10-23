@@ -60,8 +60,6 @@ const Login = () => {
       clearTimeout(timeoutId);
 
       const data = await response.json();
-      console.log('Login response:', data);
-
       const userData = data?.data?.user;
       const authData = data?.data?.authorisation;
 

@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import axios from 'axios';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function Dashboard() {
   const { user, token } = useAuth();
@@ -24,7 +25,7 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState({
     products_count: 0,
     customers_count: 0,
-    invoices_count: 0
+    invoices_count: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,26 +42,40 @@ export default function Dashboard() {
           'Content-Type': 'application/json'
         }
       });
-      
       setDashboardData(response.data);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error fetching dashboard data:', error.response?.data || error.message);
+      } else {
+        console.error('Unexpected error:', error);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchDashboardData();
-  };
-
+  // ✅ Make sure to always fetch, even if token arrives later
   useEffect(() => {
     if (token) {
       fetchDashboardData();
     }
   }, [token]);
+
+  // ✅ Prevent infinite loading when token is null or delayed
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) setLoading(false);
+    }, 5000); // fallback after 5s in case of failure
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  if (loading) return <LoadingScreen />;
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData();
+  };
 
   const quickStats = [
     { 
@@ -89,20 +104,8 @@ export default function Dashboard() {
     },
   ];
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading dashboard...</Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Content */}
       <ScrollView 
         style={styles.content} 
         showsVerticalScrollIndicator={false}
@@ -116,7 +119,6 @@ export default function Dashboard() {
       >
         <Text style={styles.welcome}>Welcome back, {user?.first_name || user?.name || 'User'}! 👋</Text>
         
-        {/* Quick Stats */}
         <View style={styles.statsGrid}>
           {quickStats.map((stat, index) => (
             <View key={index} style={styles.statCard}>
@@ -133,76 +135,18 @@ export default function Dashboard() {
   );
 }
 
-// Add these new styles to your existing styles
-const additionalStyles = StyleSheet.create({
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-});
-
-// Merge with your existing styles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    paddingTop: Platform.OS === 'ios' ? 10 : 12,
-  },
-  menuButton: {
-    padding: 4,
-  },
-  notificationButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  welcome: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 24,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  content: { paddingHorizontal: 16, paddingTop: 20 },
+  welcome: { fontSize: 20, fontWeight: '600', marginBottom: 20 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   statCard: {
     width: '48%',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F9FAFB',
     padding: 16,
     borderRadius: 12,
+    alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   statIcon: {
     width: 40,
@@ -210,41 +154,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  statTitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 12,
-  },
-  activityCard: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  activityText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  ...additionalStyles,
+  statValue: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  statTitle: { fontSize: 14, color: '#6B7280' },
 });

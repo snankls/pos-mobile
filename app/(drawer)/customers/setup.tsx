@@ -9,12 +9,13 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  Modal,
+  FlatList
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
-import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -44,6 +45,8 @@ export default function CustomersSetupScreen() {
   });
 
   const [cities, setCities] = useState<any[]>([]);
+  const [filteredCities, setFilteredCities] = useState<any[]>([]);
+  const [statusOptions, setStatusOptions] = useState<any[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<any>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
@@ -51,10 +54,16 @@ export default function CustomersSetupScreen() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [globalError, setGlobalError] = useState('');
 
+  // Modal states
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
+
   // 🔁 Load data
   useEffect(() => {
     if (token) {
       fetchCities();
+      fetchStatus();
       
       if (id)
         fetchCustomer(id as string);
@@ -62,6 +71,40 @@ export default function CustomersSetupScreen() {
         resetForm();
     }
   }, [token, id]);
+
+  // 🔹 Filter cities based on search
+  useEffect(() => {
+    if (citySearch) {
+      const filtered = cities.filter(city =>
+        city.name.toLowerCase().includes(citySearch.toLowerCase())
+      );
+      setFilteredCities(filtered);
+    } else {
+      setFilteredCities(cities);
+    }
+  }, [citySearch, cities]);
+
+  const fetchStatus = async () => {
+    if (!token) return;
+
+    try {
+      const res = await axios.get(`${API_URL}/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.data && typeof res.data.data === 'object') {
+        const statusData = res.data.data;
+        const statusArray = Object.entries(statusData).map(([key, value]) => ({
+          id: key,
+          key: key,
+          value: value
+        }));
+        setStatusOptions(statusArray);
+      }
+    } catch (err: any) {
+      console.error('Fetch status error:', err);
+    }
+  };
 
   const resetForm = () => {
     setForm({
@@ -83,6 +126,7 @@ export default function CustomersSetupScreen() {
     setImageFile(null);
     setIsImageDeleted(false);
     setFormErrors({});
+    setCitySearch('');
   };
 
   // ✅ Fetch Cities
@@ -96,9 +140,11 @@ export default function CustomersSetupScreen() {
         ? response.data
         : response.data.data || [];
       setCities(citiesData);
+      setFilteredCities(citiesData);
     } catch (error) {
       console.error('Error loading cities:', error);
       setCities([]);
+      setFilteredCities([]);
     }
   };
 
@@ -163,11 +209,10 @@ export default function CustomersSetupScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // correct enum
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.8,
     });
-
 
     if (!result.canceled) {
       const image = result.assets[0];
@@ -177,7 +222,28 @@ export default function CustomersSetupScreen() {
         type: image.type ? `image/${image.type}` : 'image/jpeg',
       });
       setImagePreview(image.uri);
+      setIsImageDeleted(false);
     }
+  };
+
+  // 🔹 Handle city selection
+  const handleCitySelect = (city: any) => {
+    handleChange('city_id', String(city.id));
+    setCityModalVisible(false);
+    setCitySearch('');
+  };
+
+  // 🔹 Handle status selection
+  const handleStatusSelect = (status: string) => {
+    handleChange('status', status);
+    setStatusModalVisible(false);
+  };
+
+  // 🔹 Get selected city name
+  const getSelectedCityName = () => {
+    if (!form.city_id) return 'Select City';
+    const selectedCity = cities.find(city => String(city.id) === form.city_id);
+    return selectedCity ? selectedCity.name : 'Select City';
   };
 
   const handleSubmit = async () => {
@@ -211,7 +277,16 @@ export default function CustomersSetupScreen() {
 
       formData.append('isImageDeleted', isImageDeleted ? '1' : '0');
 
-      const response = await axios.post(`${API_URL}/customers`, formData, {
+      let url = `${API_URL}/customers`;
+      let method = 'POST';
+
+      if (id) {
+        url = `${API_URL}/customers/${id}`;
+        method = 'PUT';
+        formData.append('_method', 'PUT');
+      }
+
+      const response = await axios.post(url, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -260,118 +335,300 @@ export default function CustomersSetupScreen() {
         <View style={{ width: 24 }} /> 
       </View>
 
-      <View>
+      {/* ID/Code */}
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>ID/Code *</Text>
-        <TextInput style={styles.input} value={form.code} onChangeText={(t) => handleChange('code', t)} />
+        <TextInput 
+          style={[styles.input, formErrors.code && styles.inputError]} 
+          value={form.code} 
+          onChangeText={(t) => handleChange('code', t)} 
+        />
         {formErrors.code && <Text style={styles.errorText}>{formErrors.code[0]}</Text>}
       </View>
 
-      <View>
+      {/* Name */}
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>Name *</Text>
-        <TextInput style={styles.input} value={form.name} onChangeText={(t) => handleChange('name', t)} />
+        <TextInput 
+          style={[styles.input, formErrors.name && styles.inputError]} 
+          value={form.name} 
+          onChangeText={(t) => handleChange('name', t)} 
+        />
         {formErrors.name && <Text style={styles.errorText}>{formErrors.name[0]}</Text>}
       </View>
 
-      <View>
+      {/* CNIC */}
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>CNIC *</Text>
-        <TextInput style={styles.input} value={form.cnic} onChangeText={(t) => handleChange('cnic', t)} />
+        <TextInput 
+          style={[styles.input, formErrors.cnic && styles.inputError]} 
+          value={form.cnic} 
+          onChangeText={(t) => handleChange('cnic', t)} 
+        />
         {formErrors.cnic && <Text style={styles.errorText}>{formErrors.cnic[0]}</Text>}
       </View>
 
-      <View>
+      {/* Email Address */}
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>Email Address</Text>
-        <TextInput style={styles.input} value={form.email_address} onChangeText={(t) => handleChange('email_address', t)} />
+        <TextInput 
+          style={styles.input} 
+          value={form.email_address} 
+          onChangeText={(t) => handleChange('email_address', t)} 
+        />
       </View>
 
       {/* Mobile Number */}
-      <View>
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>Mobile Number</Text>
-        <TextInput style={styles.input} value={form.mobile_number} onChangeText={(t) => handleChange('mobile_number', t)} />
+        <TextInput 
+          style={styles.input} 
+          value={form.mobile_number} 
+          onChangeText={(t) => handleChange('mobile_number', t)} 
+        />
       </View>
 
       {/* Phone Number */}
-      <View>
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>Phone Number</Text>
-        <TextInput style={styles.input} value={form.phone_number} onChangeText={(t) => handleChange('phone_number', t)} />
+        <TextInput 
+          style={styles.input} 
+          value={form.phone_number} 
+          onChangeText={(t) => handleChange('phone_number', t)} 
+        />
       </View>
 
       {/* Whatsapp */}
-      <View>
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>Whatsapp</Text>
-        <TextInput style={styles.input} value={form.whatsapp} onChangeText={(t) => handleChange('whatsapp', t)} />
+        <TextInput 
+          style={styles.input} 
+          value={form.whatsapp} 
+          onChangeText={(t) => handleChange('whatsapp', t)} 
+        />
       </View>
 
-      {/* City */}
-       <Text style={styles.label}>Select City</Text>
-       <View style={styles.pickerContainer}>
-         <Picker
-           selectedValue={form.city_id}
-           onValueChange={(value) => handleChange('city_id', value)}
-           style={styles.picker}
-         >
-           <Picker.Item label="Select City" value="" />
-           {cities.map((city) => (
-             <Picker.Item key={city.id} label={city.name} value={String(city.id)} />
-           ))}
-         </Picker>
-       </View>
-       {formErrors.city_id && <Text style={styles.errorText}>{formErrors.city_id[0]}</Text>}
+      {/* City - Modal Version */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Select City</Text>
+        <TouchableOpacity 
+          style={[styles.modalTrigger, formErrors.city_id && styles.inputError]}
+          onPress={() => setCityModalVisible(true)}
+        >
+          <Text style={form.city_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {getSelectedCityName()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {formErrors.city_id && <Text style={styles.errorText}>{formErrors.city_id[0]}</Text>}
+      </View>
 
       {/* Credit Balance */}
-      <View>
+      <View style={styles.fieldGroup}>
         <Text style={styles.label}>Credit Balance</Text>
-        <TextInput style={styles.input} value={form.credit_balance} keyboardType="numeric" onChangeText={(text) => handleChange('credit_balance', text)} />
+        <TextInput 
+          style={[styles.input, formErrors.credit_balance && styles.inputError]} 
+          value={form.credit_balance} 
+          keyboardType="numeric" 
+          onChangeText={(text) => handleChange('credit_balance', text)} 
+        />
         {formErrors.credit_balance && <Text style={styles.errorText}>{formErrors.credit_balance[0]}</Text>}
       </View>
 
       {/* Credit Limit */}
-      <Text style={styles.label}>Credit Limit</Text>
-      <TextInput style={styles.input} value={form.credit_limit} keyboardType="numeric" onChangeText={(text) => handleChange('credit_limit', text)} />
-      {formErrors.credit_limit && <Text style={styles.errorText}>{formErrors.credit_limit[0]}</Text>}
-
-      <Text style={styles.label}>Address</Text>
-      <TextInput
-        style={[styles.input, { height: 80 }]}
-        multiline
-        value={form.address}
-        onChangeText={(t) => handleChange('address', t)}
-      />
-
-      <Text style={styles.label}>Status</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={form.status}
-          onValueChange={(v) => handleChange('status', v)}
-          style={styles.picker}>
-          <Picker.Item label="Active" value="Active" />
-          <Picker.Item label="Inactive" value="Inactive" />
-        </Picker>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Credit Limit</Text>
+        <TextInput 
+          style={[styles.input, formErrors.credit_limit && styles.inputError]} 
+          value={form.credit_limit} 
+          keyboardType="numeric" 
+          onChangeText={(text) => handleChange('credit_limit', text)} 
+        />
+        {formErrors.credit_limit && <Text style={styles.errorText}>{formErrors.credit_limit[0]}</Text>}
       </View>
 
-      <Text style={styles.label}>Upload Image</Text>
-      <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
-        <Ionicons name="image-outline" size={20} color="#007AFF" />
-        <Text style={styles.uploadButtonText}>Upload Image</Text>
-      </TouchableOpacity>
+      {/* Address */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Address</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          multiline
+          value={form.address}
+          onChangeText={(t) => handleChange('address', t)}
+        />
+      </View>
 
-      {imagePreview && (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: imagePreview }}
-            style={styles.previewImage}
-            resizeMode="cover"
-          />
-          <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
-            <Ionicons name="close-circle" size={26} color="red" />
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Status - Modal Version */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Status</Text>
+        <TouchableOpacity 
+          style={styles.modalTrigger}
+          onPress={() => setStatusModalVisible(true)}
+        >
+          <Text style={form.status ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {form.status || 'Select Status'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity onPress={handleSubmit} style={styles.saveButton} disabled={loading}>
-        <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
+      {/* Image Upload */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Upload Image</Text>
+        <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
+          <Ionicons name="image-outline" size={20} color="#007AFF" />
+          <Text style={styles.uploadButtonText}>Upload Image</Text>
+        </TouchableOpacity>
+
+        {imagePreview && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: imagePreview }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+            <TouchableOpacity onPress={handleRemoveImage} style={styles.closeIconContainer}>
+              <Ionicons name="close-circle" size={26} color="red" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Submit Button */}
+      <TouchableOpacity 
+        onPress={handleSubmit} 
+        style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveButtonText}>
+            {id ? 'Update Customer' : 'Add Customer'}
+          </Text>
+        )}
       </TouchableOpacity>
 
       {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}
+
+      {/* City Selection Modal */}
+      <Modal
+        visible={cityModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setCityModalVisible(false);
+          setCitySearch('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select City</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setCityModalVisible(false);
+                  setCitySearch('');
+                }}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search cities..."
+                placeholderTextColor="#999"
+                value={citySearch}
+                onChangeText={setCitySearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {citySearch.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => setCitySearch('')}
+                  style={styles.clearSearchButton}
+                >
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <FlatList
+              data={filteredCities}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.modalItem,
+                    form.city_id === String(item.id) && styles.selectedModalItem
+                  ]}
+                  onPress={() => handleCitySelect(item)}
+                >
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                  {form.city_id === String(item.id) && (
+                    <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyModal}>
+                  <Ionicons name="location-outline" size={50} color="#ccc" />
+                  <Text style={styles.emptyModalText}>
+                    {citySearch ? 'No cities found' : 'No cities available'}
+                  </Text>
+                </View>
+              }
+              contentContainerStyle={filteredCities.length === 0 ? styles.modalListContentEmpty : styles.modalListContent}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Status Selection Modal */}
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Status</Text>
+              <TouchableOpacity 
+                onPress={() => setStatusModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={statusOptions}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.modalItem,
+                    form.status === item.key && styles.selectedModalItem
+                  ]}
+                  onPress={() => handleStatusSelect(item.key)}
+                >
+                  <Text style={styles.modalItemText}>{item.value}</Text>
+                  {form.status === item.key && (
+                    <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.modalListContent}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -397,25 +654,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
+  fieldGroup: {
+    marginBottom: 16,
+  },
   label: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#1C1C1E',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+  modalTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+  },
+  modalTriggerText: {
+    color: '#1C1C1E',
     fontSize: 16,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 10,
+  modalTriggerPlaceholder: {
+    color: '#8E8E93',
+    fontSize: 16,
   },
   uploadButton: {
     flexDirection: 'row',
@@ -425,7 +706,6 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
     borderRadius: 8,
     paddingVertical: 10,
-    marginBottom: 10,
     backgroundColor: '#F0F7FF',
   },
   uploadButtonText: {
@@ -459,26 +739,31 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#007AFF',
-    padding: 12,
     borderRadius: 8,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#C7C7CC',
   },
   saveButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   errorText: {
-    color: 'red',
-    marginBottom: 8,
+    color: '#FF3B30',
     fontSize: 13,
+    marginTop: 4,
   },
   globalError: {
     color: '#fff',
     backgroundColor: '#FF3B30',
     textAlign: 'center',
-    padding: 8,
+    padding: 12,
     borderRadius: 6,
     marginTop: 10,
   },
@@ -486,5 +771,90 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  clearSearchButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  modalListContent: {
+    paddingBottom: 16,
+  },
+  modalListContentEmpty: {
+    paddingBottom: 16,
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  selectedModalItem: {
+    backgroundColor: '#F0F8FF',
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  emptyModal: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyModalText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+    textAlign: 'center',
   },
 });

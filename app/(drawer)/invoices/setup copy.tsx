@@ -69,7 +69,7 @@ export default function InvoicesSetupScreen() {
   const [currentRecord, setCurrentRecord] = useState<Invoice>({
     customer_id: '',
     invoice_date: new Date().toISOString().split('T')[0],
-    status: 'Active',
+    status: 'draft',
     description: '',
     items: []
   });
@@ -92,14 +92,16 @@ export default function InvoicesSetupScreen() {
   const [showDiscountTypePickers, setShowDiscountTypePickers] = useState<boolean[]>([]);
   const [settings, setSettings] = useState<any>({});
 
-  // Status options from API
-  const [statusOptions, setStatusOptions] = useState<any[]>([]);
-
   // Calculate totals
   const [totalQuantity, setTotalQuantity] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalDiscount, setTotalDiscount] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
+
+  const statusOptions = [
+    { id: 'Active', name: 'Active' },
+    { id: 'Inactive', name: 'Inactive' },
+  ];
 
   // Check if we're in edit mode
   useEffect(() => {
@@ -117,11 +119,8 @@ export default function InvoicesSetupScreen() {
         setIsDataLoading(true);
         
         // Fetch all initial data
-        await Promise.all([
-          fetchInitialData(),
-          fetchSettings(),
-          fetchStatus()
-        ]);
+        await fetchInitialData();
+        await fetchSettings();
 
         // If in edit mode and we have ID, fetch invoice data
         if (id && isEditMode) {
@@ -135,7 +134,7 @@ export default function InvoicesSetupScreen() {
     };
 
     initializeData();
-  }, [id, isEditMode, token]);
+  }, [id, isEditMode, token]); // Add token as dependency
 
   // Update filtered products when products or search changes
   useEffect(() => {
@@ -167,28 +166,6 @@ export default function InvoicesSetupScreen() {
   useEffect(() => {
     updateTotals();
   }, [itemsList]);
-
-  const fetchStatus = async () => {
-    if (!token) return;
-
-    try {
-      const res = await axios.get(`${API_URL}/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.data.data && typeof res.data.data === 'object') {
-        const statusData = res.data.data;
-        const statusArray = Object.entries(statusData).map(([key, value]) => ({
-          id: key,
-          key: key,
-          value: value
-        }));
-        setStatusOptions(statusArray);
-      }
-    } catch (err: any) {
-      console.error('Fetch status error:', err);
-    }
-  };
 
   // Fetch invoice data for edit mode
   const fetchInvoiceData = async (invoiceId: string) => {
@@ -385,8 +362,8 @@ export default function InvoicesSetupScreen() {
   };
 
   // Status selection
-  const handleStatusSelect = (statusKey: string) => {
-    setCurrentRecord(prev => ({ ...prev, status: statusKey }));
+  const handleStatusSelect = (statusId: string) => {
+    setCurrentRecord(prev => ({ ...prev, status: statusId }));
     setShowStatusPicker(false);
     clearError('status');
   };
@@ -563,7 +540,7 @@ export default function InvoicesSetupScreen() {
   };
 
   const clearError = (field: string) => {
-    setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
+    setFormErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   // Form validation
@@ -686,7 +663,7 @@ export default function InvoicesSetupScreen() {
     setCurrentRecord({
       customer_id: '',
       invoice_date: new Date().toISOString().split('T')[0],
-      status: 'Active',
+      status: 'draft',
       description: '',
       items: []
     });
@@ -708,9 +685,9 @@ export default function InvoicesSetupScreen() {
     return customer ? `${customer.name} (${customer.code})` : 'Select Customer';
   };
 
-  const getSelectedStatusName = (statusKey: string) => {
-    const status = statusOptions.find(s => s.key === statusKey);
-    return status ? status.value : 'Select Status';
+  const getSelectedStatusName = (statusId: string) => {
+    const status = statusOptions.find(s => s.id === statusId);
+    return status ? status.name : 'Select Status';
   };
 
   const renderItemRow = ({ item, index }: { item: InvoiceItem; index: number }) => {
@@ -730,7 +707,7 @@ export default function InvoicesSetupScreen() {
         {/* Product Selection */}
         <View style={[styles.cell, styles.cellProduct]}>
           <TouchableOpacity
-            style={[styles.modalTrigger, formErrors[`items[${index}].product_id`] && styles.inputError]}
+            style={[styles.productPicker, formErrors[`items[${index}].product_id`] && styles.inputError]}
             onPress={() => {
               const newPickers = new Array(itemsList.length).fill(false);
               newPickers[index] = true;
@@ -739,10 +716,13 @@ export default function InvoicesSetupScreen() {
             }}
             disabled={isLoading}
           >
-            <Text style={!item.product_id ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
+            <Text 
+              style={!item.product_id ? styles.placeholderText : styles.pickerText}
+              numberOfLines={1}
+            >
               {getSelectedProductName(item.product_id)}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            <Ionicons name="chevron-down" size={14} color="#666" />
           </TouchableOpacity>
 
           {/* Product Selection Modal */}
@@ -876,7 +856,7 @@ export default function InvoicesSetupScreen() {
           <View style={styles.discountContainer}>
             {/* Custom Discount Type Picker */}
             <TouchableOpacity
-              style={styles.modalTrigger}
+              style={styles.discountTypeButton}
               onPress={() => {
                 const newPickers = [...showDiscountTypePickers];
                 newPickers[index] = true;
@@ -884,10 +864,10 @@ export default function InvoicesSetupScreen() {
               }}
               disabled={!item.product_id || isLoading}
             >
-              <Text style={styles.modalTriggerText}>
+              <Text style={styles.discountTypeText}>
                 {item.discountType === 'Percentage' ? '%' : settings.currency_sign}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              <Ionicons name="chevron-down" size={12} color="#666" />
             </TouchableOpacity>
 
             <TextInput
@@ -1021,14 +1001,14 @@ export default function InvoicesSetupScreen() {
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Customer <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={[styles.modalTrigger, formErrors.customer_id && styles.inputError]}
+            style={[styles.pickerTrigger, formErrors.customer_id && styles.inputError]}
             onPress={() => setShowCustomerPicker(true)}
             disabled={isLoading}
           >
-            <Text style={!currentRecord.customer_id ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
+            <Text style={!currentRecord.customer_id ? styles.placeholderText : styles.pickerText}>
               {getSelectedCustomerName(currentRecord.customer_id)}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            <Ionicons name="chevron-down" size={16} color="#666" />
           </TouchableOpacity>
           {formErrors.customer_id && (
             <Text style={styles.errorText}>{formErrors.customer_id[0]}</Text>
@@ -1039,12 +1019,12 @@ export default function InvoicesSetupScreen() {
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Invoice Date <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={[styles.modalTrigger, formErrors.invoice_date && styles.inputError]}
+            style={[styles.pickerTrigger, formErrors.invoice_date && styles.inputError]}
             onPress={() => setShowDatePicker(true)}
             disabled={isLoading}
           >
-            <Text style={styles.modalTriggerText}>{currentRecord.invoice_date}</Text>
-            <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+            <Text style={styles.pickerText}>{currentRecord.invoice_date}</Text>
+            <Ionicons name="calendar-outline" size={16} color="#666" />
           </TouchableOpacity>
           {formErrors.invoice_date && (
             <Text style={styles.errorText}>{formErrors.invoice_date[0]}</Text>
@@ -1055,14 +1035,14 @@ export default function InvoicesSetupScreen() {
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Status <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={[styles.modalTrigger, formErrors.status && styles.inputError]}
+            style={[styles.pickerTrigger, formErrors.status && styles.inputError]}
             onPress={() => setShowStatusPicker(true)}
             disabled={isLoading}
           >
-            <Text style={!currentRecord.status ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
+            <Text style={!currentRecord.status ? styles.placeholderText : styles.pickerText}>
               {getSelectedStatusName(currentRecord.status)}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            <Ionicons name="chevron-down" size={16} color="#666" />
           </TouchableOpacity>
           {formErrors.status && (
             <Text style={styles.errorText}>{formErrors.status[0]}</Text>
@@ -1168,14 +1148,14 @@ export default function InvoicesSetupScreen() {
 
         {/* Submit Button */}
         <TouchableOpacity
-          style={[styles.saveButton, (isLoading || itemsList.length === 0) && styles.saveButtonDisabled]}
+          style={[styles.submitButton, (isLoading || itemsList.length === 0) && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={isLoading || itemsList.length === 0}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>
+            <Text style={styles.submitButtonText}>
               {isEditMode ? 'Update Invoice' : 'Save Invoice'}
             </Text>
           )}
@@ -1310,12 +1290,12 @@ export default function InvoicesSetupScreen() {
                   <TouchableOpacity
                     style={[
                       styles.modalItem,
-                      currentRecord.status === status.key && styles.selectedModalItem
+                      currentRecord.status === status.id && styles.selectedModalItem
                     ]}
-                    onPress={() => handleStatusSelect(status.key)}
+                    onPress={() => handleStatusSelect(status.id)}
                   >
-                    <Text style={styles.modalItemText}>{status.value}</Text>
-                    {currentRecord.status === status.key && (
+                    <Text style={styles.modalItemText}>{status.name}</Text>
+                    {currentRecord.status === status.id && (
                       <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
                     )}
                   </TouchableOpacity>
@@ -1376,24 +1356,26 @@ const styles = StyleSheet.create({
   required: {
     color: 'red',
   },
-  modalTrigger: {
+  pickerTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: '#F8F9FA',
   },
-  modalTriggerText: {
-    color: '#1C1C1E',
+  pickerText: {
     fontSize: 16,
+    color: '#333',
+    flex: 1,
   },
-  modalTriggerPlaceholder: {
-    color: '#8E8E93',
+  placeholderText: {
     fontSize: 16,
+    color: '#999',
+    flex: 1,
   },
   textArea: {
     backgroundColor: 'white',
@@ -1506,6 +1488,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  productPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minHeight: 32,
+  },
   inputSmall: {
     backgroundColor: 'white',
     borderWidth: 1,
@@ -1525,6 +1519,14 @@ const styles = StyleSheet.create({
   discountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  discountTypePicker: {
+    flex: 1,
+    marginRight: 4,
+  },
+  pickerSmall: {
+    fontSize: 10,
+    height: 30,
   },
   discountInput: {
     flex: 1,
@@ -1613,22 +1615,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#007AFF',
   },
-  saveButton: {
+  submitButton: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#C7C7CC',
+  submitButtonDisabled: {
+    backgroundColor: '#ccc',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
+  submitButtonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   errorContainer: {
     backgroundColor: '#ffebee',
@@ -1671,12 +1671,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#eee',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1C1C1E',
+    color: '#333',
   },
   closeButton: {
     padding: 4,
@@ -1686,7 +1686,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#eee',
   },
   searchIcon: {
     marginRight: 8,
@@ -1698,7 +1698,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#ddd',
   },
   clearSearchButton: {
     padding: 4,
@@ -1718,14 +1718,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: '#f5f5f5',
   },
   selectedModalItem: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: '#f0f8ff',
   },
   modalItemText: {
     fontSize: 16,
-    color: '#1C1C1E',
+    color: '#333',
   },
   productInfo: {
     flex: 1,
@@ -1773,5 +1773,57 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
     textAlign: 'center',
+  },
+  discountTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minWidth: 50,
+    marginRight: 4,
+  },
+  discountTypeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    marginRight: 4,
+  },
+  discountModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  discountModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 0,
+    width: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  discountOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  discountOptionSelected: {
+    backgroundColor: '#f0f8ff',
+  },
+  discountOptionText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  discountOptionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });

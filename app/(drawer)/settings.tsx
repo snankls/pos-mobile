@@ -12,12 +12,19 @@ import {
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function SettingsScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const { token } = useAuth();
 
-  const [form, setForm] = useState({
+  type SettingsForm = {
+    invoice_prefix: string;
+    invoice_count: string;
+    currency_sign: string;
+  };
+
+  const [form, setForm] = useState<SettingsForm>({
     invoice_prefix: '',
     invoice_count: '',
     currency_sign: '',
@@ -25,16 +32,17 @@ export default function SettingsScreen() {
 
   const [errors, setErrors] = useState<any>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
 
+  // ✅ Only one useEffect to fetch settings
   useEffect(() => {
     fetchSettings();
   }, []);
 
-  const fetchSettings = async () => {
+  async function fetchSettings() {
     try {
-      setFetching(true);
+      setLoading(true);
       const res = await axios.get(`${API_URL}/settings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -49,13 +57,16 @@ export default function SettingsScreen() {
       console.error('Error fetching settings:', err.response?.data || err.message);
       Alert.alert('Error', 'Failed to load settings.');
     } finally {
-      setFetching(false);
+      setLoading(false);
     }
-  };
+  }
 
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: null }));
+  // ✅ Loader placed AFTER hooks, so order is stable
+  if (loading) return <LoadingScreen />;
+
+  const handleChange = (field: keyof SettingsForm, value: string) => {
+    setForm((prev: SettingsForm) => ({ ...prev, [field]: value }));
+    setErrors((prev: Record<string, string[] | null>) => ({ ...prev, [field]: null }));
   };
 
   const handleSubmit = async () => {
@@ -99,15 +110,6 @@ export default function SettingsScreen() {
       setIsLoading(false);
     }
   };
-
-  if (fetching) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={{ marginTop: 10 }}>Loading settings...</Text>
-      </View>
-    );
-  }
 
   return (
     <ScrollView
@@ -175,14 +177,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  label: { fontWeight: 'bold', marginTop: 16, color: '#000' },
+  fieldGroup: {
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#1C1C1E',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     padding: 10,
-    marginTop: 6,
     borderRadius: 6,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8F9FA',
   },
   error: { color: 'red', marginTop: 4 },
   button: {

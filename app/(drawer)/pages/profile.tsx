@@ -12,6 +12,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../components/LoadingScreen';
 
 export default function UserProfileScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -19,7 +20,6 @@ export default function UserProfileScreen() {
 
   const { token, user: authUser } = useAuth();
   const router = useRouter();
-
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,7 +30,7 @@ export default function UserProfileScreen() {
     }
   }, [token, authUser]);
 
-  const fetchUser = async (userId: string) => {
+  const fetchUser = async (userId: number | string) => {
     try {
       const res = await axios.get(`${API_URL}/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -42,39 +42,10 @@ export default function UserProfileScreen() {
       setLoading(false);
     }
   };
-
-  const handleEdit = () => {
-    router.push('/pages/edit-profile');
-  };
-
-  const getSubscriptionStatus = () => {
-    if (!user.subscribe_start || !user.subscribe_end) {
-      return { status: 'No Subscription', color: '#DC2626', bgColor: '#FEE2E2' };
-    }
     
-    const today = new Date();
-    const endDate = new Date(user.subscribe_end);
-    
-    if (today > endDate) {
-      return { status: 'Expired', color: '#DC2626', bgColor: '#FEE2E2' };
-    } else if (user.remaining_days <= 7) {
-      return { status: 'Expiring Soon', color: '#D97706', bgColor: '#FEF3C7' };
-    } else {
-      return { status: 'Active', color: '#059669', bgColor: '#D1FAE5' };
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.safeArea}>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        </View>
-      </View>
-    );
-  }
-
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
+  
   if (error || !user) {
     return (
       <View style={styles.safeArea}>
@@ -98,30 +69,9 @@ export default function UserProfileScreen() {
     ? `${IMAGE_URL}/uploads/users/${user.images.image_name}`
     : null;
 
-  const subscriptionStatus = getSubscriptionStatus();
-  const hasSubscription = user.subscribe_start && user.subscribe_end;
-
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Ionicons name="chevron-back" size={24} color="#374151" />
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-          
-          <Text style={styles.title}>My Profile</Text>
-          
-          <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-            <Ionicons name="create-outline" size={20} color="#6366F1" />
-            <Text style={styles.editText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Profile Hero Section */}
         <View style={styles.heroCard}>
           <View style={styles.avatarContainer}>
@@ -179,11 +129,6 @@ export default function UserProfileScreen() {
               label="Date of Birth" 
               value={user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : 'Not set'} 
             />
-            <DetailItem 
-              icon="key-outline" 
-              label="PIN Code" 
-              value={user.pin_code} 
-            />
           </View>
         </View>
 
@@ -221,34 +166,21 @@ export default function UserProfileScreen() {
           </View>
         </View>
 
-        {/* Referral Information */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={20} color="#374151" />
-            <Text style={styles.sectionTitle}>Referral Information</Text>
-          </View>
-          
-          <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="person-add-outline" 
-              label="Referred By" 
-              value={user.refer_by || 'No one'} 
-            />
-            <DetailItem 
-              icon="cash-outline" 
-              label="Referral Amount" 
-              value={user.refer_amount ? `₹${user.refer_amount}` : 'Not set'} 
-            />
-          </View>
-        </View>
-
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => router.push('/pages/edit-profile')}
+          >
+            <Ionicons name="person-outline" size={18} color="#007AFF" />
+            <Text style={styles.secondaryButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.push('/pages/change-password')}
           >
-            <Ionicons name="card-outline" size={18} color="#fff" />
+            <Ionicons name="lock-closed-outline" size={18} color="#fff" />
             <Text style={styles.buttonText}>Change Password</Text>
           </TouchableOpacity>
         </View>
@@ -310,41 +242,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-  },
-  backText: {
-    color: '#374151',
-    marginLeft: 4,
-    fontSize: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-  },
-  editText: {
-    color: '#6366F1',
-    marginLeft: 4,
-    fontWeight: '600',
   },
   heroCard: {
     backgroundColor: '#fff',
