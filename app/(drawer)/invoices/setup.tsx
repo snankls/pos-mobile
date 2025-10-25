@@ -18,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import LoadingScreen from '../../components/LoadingScreen';
 
 interface Customer {
   id: string;
@@ -78,7 +79,7 @@ export default function InvoicesSetupScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [itemsList, setItemsList] = useState<InvoiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [formErrors, setFormErrors] = useState<any>({});
   const [globalErrorMessage, setGlobalErrorMessage] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -101,6 +102,58 @@ export default function InvoicesSetupScreen() {
   const [totalDiscount, setTotalDiscount] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
 
+  const resetForm = () => {
+    setCurrentRecord({
+      customer_id: '',
+      invoice_date: new Date().toISOString().split('T')[0],
+      status: 'Active',
+      description: '',
+      items: []
+    });
+    setItemsList([]);
+    setShowProductPickers([]);
+    setShowDiscountTypePickers([]);
+    setFormErrors({});
+    setGlobalErrorMessage('');
+    setIsEditMode(false);
+  };
+
+  // Update all totals
+  const updateTotals = () => {
+    let quantityTotal = 0;
+    let priceTotal = 0;
+    let discountTotal = 0;
+
+    itemsList.forEach(item => {
+      if (item.product_id) {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const itemTotal = parseFloat(item.total_amount) || 0;
+        
+        quantityTotal += quantity;
+        priceTotal += price * quantity;
+        discountTotal += (price * quantity) - itemTotal;
+      }
+    });
+
+    setTotalQuantity(quantityTotal);
+    setTotalPrice(priceTotal);
+    setTotalDiscount(discountTotal);
+    setGrandTotal(priceTotal - discountTotal);
+  };
+
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([fetchCustomers(), fetchProducts()]);
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+      Alert.alert('Error', 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Check if we're in edit mode
   useEffect(() => {
     if (id) {
@@ -114,7 +167,7 @@ export default function InvoicesSetupScreen() {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        setIsDataLoading(true);
+        setLoading(true);
         
         // Fetch all initial data
         await Promise.all([
@@ -130,7 +183,7 @@ export default function InvoicesSetupScreen() {
       } catch (error) {
         console.error('Error in data initialization:', error);
       } finally {
-        setIsDataLoading(false);
+        setLoading(false);
       }
     };
 
@@ -257,49 +310,6 @@ export default function InvoicesSetupScreen() {
     }
   };
 
-  const fetchSettings = async () => {
-    if (!token) {
-      console.error('Token missing for settings API');
-      return;
-    }
-
-    try {
-      const response = await axios.get(`${API_URL}/settings`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
-
-      const settingsObj: Record<string, string> = {};
-
-      Object.values(response.data).forEach((setting: any) => {
-        if (setting.data_name && setting.data_value !== undefined) {
-          settingsObj[setting.data_name] = setting.data_value;
-        }
-      });
-
-      setSettings(settingsObj);
-    } catch (error: any) {
-      console.error('Error fetching settings:', error);
-      if (error.response?.status === 401) {
-        Alert.alert('Authentication Error', 'Please login again');
-      }
-    }
-  };
-
-  const fetchInitialData = async () => {
-    try {
-      setIsDataLoading(true);
-      await Promise.all([fetchCustomers(), fetchProducts()]);
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      Alert.alert('Error', 'Failed to load data');
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
-
   const fetchCustomers = async () => {
     try {
       if (!token) {
@@ -328,6 +338,37 @@ export default function InvoicesSetupScreen() {
         Alert.alert('Authentication Error', 'Please login again');
       } else {
         Alert.alert('Error', 'Failed to load customers');
+      }
+    }
+  };
+
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        Alert.alert('Authentication Error', 'Please login again');
       }
     }
   };
@@ -365,6 +406,9 @@ export default function InvoicesSetupScreen() {
       }
     }
   };
+
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   // Date handling
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -538,30 +582,6 @@ export default function InvoicesSetupScreen() {
     }
   };
 
-  // Update all totals
-  const updateTotals = () => {
-    let quantityTotal = 0;
-    let priceTotal = 0;
-    let discountTotal = 0;
-
-    itemsList.forEach(item => {
-      if (item.product_id) {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const itemTotal = parseFloat(item.total_amount) || 0;
-        
-        quantityTotal += quantity;
-        priceTotal += price * quantity;
-        discountTotal += (price * quantity) - itemTotal;
-      }
-    });
-
-    setTotalQuantity(quantityTotal);
-    setTotalPrice(priceTotal);
-    setTotalDiscount(discountTotal);
-    setGrandTotal(priceTotal - discountTotal);
-  };
-
   const clearError = (field: string) => {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
   };
@@ -680,22 +700,6 @@ export default function InvoicesSetupScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setCurrentRecord({
-      customer_id: '',
-      invoice_date: new Date().toISOString().split('T')[0],
-      status: 'Active',
-      description: '',
-      items: []
-    });
-    setItemsList([]);
-    setShowProductPickers([]);
-    setShowDiscountTypePickers([]);
-    setFormErrors({});
-    setGlobalErrorMessage('');
-    setIsEditMode(false);
   };
 
   const getSelectedProductName = (productId: string) => {
@@ -993,15 +997,6 @@ export default function InvoicesSetupScreen() {
       </View>
     );
   };
-
-  if (isDataLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading data...</Text>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView 

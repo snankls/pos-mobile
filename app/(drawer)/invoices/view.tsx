@@ -13,6 +13,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../components/LoadingScreen';
 
 export default function InvoiceViewScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -71,6 +72,9 @@ export default function InvoiceViewScreen() {
       setLoading(false);
     }
   };
+
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -171,17 +175,6 @@ export default function InvoiceViewScreen() {
       console.error('Error in email invoice:', error);
     }
   };
-
-  if (loading) {
-    return (
-      <View style={styles.safeArea}>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text style={styles.loadingText}>Loading invoice...</Text>
-        </View>
-      </View>
-    );
-  }
 
   if (error || !invoice) {
     return (

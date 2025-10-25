@@ -14,6 +14,7 @@ import axios from 'axios';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../components/LoadingScreen';
 
 export default function CustomersViewScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -45,16 +46,8 @@ export default function CustomersViewScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.safeArea}>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text style={styles.loadingText}>Loading customer details...</Text>
-        </View>
-      </View>
-    );
-  }
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   if (error || !customer) {
     return (

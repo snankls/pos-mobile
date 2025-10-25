@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../components/LoadingScreen';
+import Pagination from '../../components/Pagination';
 
 interface Customer {
   id: number;
@@ -91,6 +93,9 @@ export default function CustomersListsScreen() {
       setRefreshing(false);
     }
   };
+
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   const updatePageRecords = (all: Customer[], currentPage: number, perPageCount: number) => {
     const startIndex = (currentPage - 1) * perPageCount;
@@ -251,41 +256,6 @@ export default function CustomersListsScreen() {
     </View>
   );
 
-  const Pagination = () => (
-    <View style={styles.pagination}>
-      <Text style={styles.paginationText}>
-        Showing {records.length} of {totalItems}
-      </Text>
-      <View style={styles.paginationControls}>
-        <TouchableOpacity
-          disabled={page <= 1}
-          onPress={() => setPage(page - 1)}
-          style={[styles.pageButton, page <= 1 && styles.pageButtonDisabled]}
-        >
-          <Ionicons name="chevron-back-outline" size={20} color={page <= 1 ? '#C7C7CC' : '#007AFF'} />
-        </TouchableOpacity>
-        <Text style={styles.pageIndicatorText}>
-          Page {page} of {totalPages}
-        </Text>
-        <TouchableOpacity
-          disabled={page >= totalPages}
-          onPress={() => setPage(page + 1)}
-          style={[styles.pageButton, page >= totalPages && styles.pageButtonDisabled]}
-        >
-          <Ionicons name="chevron-forward-outline" size={20} color={page >= totalPages ? '#C7C7CC' : '#007AFF'} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -316,11 +286,19 @@ export default function CustomersListsScreen() {
             renderItem={({ item }) => <TableRow item={item} />}
             keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={<TableHeader />}
-            ListFooterComponent={<Pagination />}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />}
           />
         </ScrollView>
       )}
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        currentCount={records.length}
+        onPageChange={setPage}
+      />
     </View>
   );
 }

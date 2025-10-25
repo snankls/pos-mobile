@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import LoadingScreen from '../../components/LoadingScreen';
 
 export default function CustomersSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -190,6 +191,9 @@ export default function CustomersSetupScreen() {
     }
   };
 
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
+
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
@@ -316,14 +320,6 @@ export default function CustomersSetupScreen() {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

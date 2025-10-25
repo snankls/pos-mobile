@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingScreen from '../../components/LoadingScreen';
 
-export default function ProductsViewScreen() {
+export default function StocksViewScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
@@ -22,14 +22,14 @@ export default function ProductsViewScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [settings, setSettings] = useState<any>({});
-  const [product, setProduct] = useState<any>(null);
+  const [stock, setStock] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (token && id) {
       fetchSettings();
-      fetchProduct(id as string);
+      fetchStock(id as string);
     }
   }, [token, id]);
 
@@ -57,14 +57,14 @@ export default function ProductsViewScreen() {
     }
   };
 
-  const fetchProduct = async (productId: string) => {
+  const fetchStock = async (stockId: string) => {
     try {
-      const res = await axios.get(`${API_URL}/products/${productId}`, {
+      const res = await axios.get(`${API_URL}/stocks/${stockId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProduct(res.data);
+      setStock(res.data);
     } catch (err) {
-      setError('Failed to load product data.');
+      setError('Failed to load stock data.');
     } finally {
       setLoading(false);
     }
@@ -80,39 +80,39 @@ export default function ProductsViewScreen() {
   };
 
   const calculateProfit = () => {
-    if (!product?.sale_price || !product?.cost_price) return 0;
-    return product.sale_price - product.cost_price;
+    if (!stock?.sale_price || !stock?.cost_price) return 0;
+    return stock.sale_price - stock.cost_price;
   };
 
   const calculateProfitMargin = () => {
-    if (!product?.sale_price || !product?.cost_price || product.cost_price === 0) return 0;
-    return ((product.sale_price - product.cost_price) / product.cost_price) * 100;
+    if (!stock?.sale_price || !stock?.cost_price || stock.cost_price === 0) return 0;
+    return ((stock.sale_price - stock.cost_price) / stock.cost_price) * 100;
   };
 
-  if (error || !product) {
+  if (error || !stock) {
     return (
       <View style={styles.safeArea}>
         <View style={styles.errorContainer}>
           <Ionicons name="close-circle-outline" size={64} color="#DC2626" />
-          <Text style={styles.errorTitle}>Product Not Found</Text>
-          <Text style={styles.errorText}>{error || 'The product you are looking for does not exist.'}</Text>
+          <Text style={styles.errorTitle}>Stock Not Found</Text>
+          <Text style={styles.errorText}>{error || 'The stock you are looking for does not exist.'}</Text>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.push('/(drawer)/products/lists')}
+            onPress={() => router.push('/(drawer)/stocks/lists')}
           >
             <Ionicons name="arrow-back" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Back to Products</Text>
+            <Text style={styles.buttonText}>Back to Stocks</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  const imageUrl = product.images && product.images.image_name
-    ? `${IMAGE_URL}/uploads/products/${product.images.image_name}`
+  const imageUrl = stock.images && stock.images.image_name
+    ? `${IMAGE_URL}/uploads/stocks/${stock.images.image_name}`
     : null;
 
-  const stockStatus = getStockStatus(product.stock);
+  const stockStatus = getStockStatus(stock.stock);
   const profit = calculateProfit();
   const profitMargin = calculateProfitMargin();
 
@@ -122,26 +122,26 @@ export default function ProductsViewScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.push('/(drawer)/products/lists')}
+            onPress={() => router.push('/(drawer)/stocks/lists')}
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={24} color="#374151" />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
           
-          <Text style={styles.title}>Product Details</Text>
+          <Text style={styles.title}>Stock Details</Text>
           
-          <TouchableOpacity onPress={() => router.push(`/(drawer)/products/setup?id=${id}`)} style={styles.editButton}>
+          <TouchableOpacity onPress={() => router.push(`/(drawer)/stocks/setup?id=${id}`)} style={styles.editButton}>
             <Ionicons name="create-outline" size={20} color="#6366F1" />
             <Text style={styles.editText}>Edit</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Product Hero Section */}
+        {/* Stock Hero Section */}
         <View style={styles.heroCard}>
           <View style={styles.imageContainer}>
             {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.productImage} />
+              <Image source={{ uri: imageUrl }} style={styles.stockImage} />
             ) : (
               <View style={styles.imagePlaceholder}>
                 <Ionicons name="cube-outline" size={50} color="#9CA3AF" />
@@ -151,14 +151,14 @@ export default function ProductsViewScreen() {
           </View>
           
           <View style={styles.heroInfo}>
-            <Text style={styles.productName}>{product.name}</Text>
-            <Text style={styles.productSKU}>SKU: {product.sku || 'N/A'}</Text>
+            <Text style={styles.stockName}>{stock.name}</Text>
+            <Text style={styles.stockSKU}>SKU: {stock.sku || 'N/A'}</Text>
             
             <View style={styles.statusRow}>
               <View style={[styles.statusBadge, 
-                product.status === 'Active' ? styles.activeBadge : styles.inactiveBadge
+                stock.status === 'Active' ? styles.activeBadge : styles.inactiveBadge
               ]}>
-                <Text style={styles.statusText}>{product.status}</Text>
+                <Text style={styles.statusText}>{stock.status}</Text>
               </View>
               
               <View style={[styles.stockBadge, { backgroundColor: stockStatus.bgColor }]}>
@@ -174,13 +174,13 @@ export default function ProductsViewScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <MaterialCommunityIcons name="package-variant" size={24} color="#6366F1" />
-            <Text style={styles.statValue}>{product.stock}</Text>
+            <Text style={styles.statValue}>{stock.stock}</Text>
             <Text style={styles.statLabel}>Current Stock</Text>
           </View>
           
           <View style={styles.statCard}>
             <MaterialCommunityIcons name="currency-usd" size={24} color="#10B981" />
-            <Text style={styles.statValue}>{settings.currency_sign}{product.sale_price || '0.00'}</Text>
+            <Text style={styles.statValue}>{settings.currency_sign}{stock.sale_price || '0.00'}</Text>
             <Text style={styles.statLabel}>Sale Price   {settings.currency_sign}</Text>
           </View>
           
@@ -203,12 +203,12 @@ export default function ProductsViewScreen() {
           <View style={styles.pricingGrid}>
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Cost Price</Text>
-              <Text style={styles.costPrice}>{settings.currency_sign}{product.cost_price || '0.00'}</Text>
+              <Text style={styles.costPrice}>{settings.currency_sign}{stock.cost_price || '0.00'}</Text>
             </View>
             
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Sale Price</Text>
-              <Text style={styles.salePrice}>{settings.currency_sign}{product.sale_price || '0.00'}</Text>
+              <Text style={styles.salePrice}>{settings.currency_sign}{stock.sale_price || '0.00'}</Text>
             </View>
             
             <View style={styles.profitItem}>
@@ -230,48 +230,48 @@ export default function ProductsViewScreen() {
           </View>
         </View>
 
-        {/* Product Information */}
+        {/* Stock Information */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="help-circle-outline" size={20} color="#374151" />
-            <Text style={styles.sectionTitle}>Product Information</Text>
+            <Text style={styles.sectionTitle}>Stock Information</Text>
           </View>
           
           <View style={styles.sectionContent}>
             <DetailItem 
               icon="category" 
               label="Category" 
-              value={product.category_name || product.category?.name} 
+              value={stock.category_name || stock.category?.name} 
             />
             <DetailItem 
               icon="branding-watermark" 
               label="Brand" 
-              value={product.brand_name || product.brand?.name} 
+              value={stock.brand_name || stock.brand?.name} 
             />
             <DetailItem 
               icon="straighten" 
               label="Unit" 
-              value={product.unit_name || product.unit?.name} 
+              value={stock.unit_name || stock.unit?.name} 
             />
           </View>
         </View>
 
         {/* Stock Alert */}
-        {product.stock <= 10 && (
-          <View style={[styles.alertCard, product.stock === 0 ? styles.dangerAlert : styles.warningAlert]}>
+        {stock.stock <= 10 && (
+          <View style={[styles.alertCard, stock.stock === 0 ? styles.dangerAlert : styles.warningAlert]}>
             <Ionicons 
-              name={product.stock === 0 ? "close-circle-outline" : "warning-outline"} 
+              name={stock.stock === 0 ? "close-circle-outline" : "warning-outline"} 
               size={24} 
-              color={product.stock === 0 ? "#DC2626" : "#D97706"} 
+              color={stock.stock === 0 ? "#DC2626" : "#D97706"} 
             />
             <View style={styles.alertContent}>
               <Text style={styles.alertTitle}>
-                {product.stock === 0 ? 'Out of Stock' : 'Low Stock Alert'}
+                {stock.stock === 0 ? 'Out of Stock' : 'Low Stock Alert'}
               </Text>
               <Text style={styles.alertText}>
-                {product.stock === 0 
-                  ? 'This product is currently out of stock. Consider restocking.'
-                  : `Only ${product.stock} units left. Consider restocking soon.`
+                {stock.stock === 0 
+                  ? 'This stock is currently out of stock. Consider restocking.'
+                  : `Only ${stock.stock} units left. Consider restocking soon.`
                 }
               </Text>
             </View>
@@ -279,7 +279,7 @@ export default function ProductsViewScreen() {
         )}
 
         {/* Description */}
-        {product.description && (
+        {stock.description && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="list-outline" size={20} color="#374151" />
@@ -287,7 +287,7 @@ export default function ProductsViewScreen() {
             </View>
             
             <View style={styles.descriptionCard}>
-              <Text style={styles.descriptionText}>{product.description}</Text>
+              <Text style={styles.descriptionText}>{stock.description}</Text>
             </View>
           </View>
         )}
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     marginRight: 16,
   },
-  productImage: {
+  stockImage: {
     width: 100,
     height: 100,
     borderRadius: 12,
@@ -426,13 +426,13 @@ const styles = StyleSheet.create({
   heroInfo: {
     flex: 1,
   },
-  productName: {
+  stockName: {
     fontSize: 20,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
-  productSKU: {
+  stockSKU: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 12,

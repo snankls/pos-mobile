@@ -34,12 +34,14 @@ const menuData: MenuItem[] = [
   {
     id: 'invoices',
     title: 'Invoices',
-    icon: 'document-text-outline',
-    items: [
-      { id: 'invoices-list', title: 'Listing', route: 'invoices/lists', icon: '' },
-      { id: 'invoices-add', title: 'Add New', route: 'invoices/setup', icon: '' },
-      { id: 'invoices-returns', title: 'Returns', route: 'invoices/returns', icon: '' },
-    ],
+    icon: 'receipt-outline',
+    route: 'invoices/lists',
+  },
+  {
+    id: 'invoices-returns',
+    title: 'Returns',
+    icon: 'arrow-undo-outline',
+    route: 'invoices/returns',
   },
   {
     id: 'customers',
@@ -52,15 +54,20 @@ const menuData: MenuItem[] = [
   {
     id: 'products',
     title: 'Products',
-    icon: 'cube-outline',
+    icon: 'pricetag-outline',
     items: [
-      { id: 'products-list', title: 'Listing', route: 'products/lists', icon: '' },
-      { id: 'products-add', title: 'Add New', route: 'products/setup', icon: '' },
-      { id: 'products-categories', title: 'Categories', route: 'products/categories', icon: '' },
-      { id: 'products-brands', title: 'Brands', route: 'products/brands', icon: '' },
-      { id: 'products-units', title: 'Units', route: 'products/units', icon: '' },
-      { id: 'products-stocks', title: 'Stocks', route: 'products/stocks', icon: '' },
+      { id: 'products-list', title: 'Listing', route: 'products/lists', icon: 'list-outline' },
+      { id: 'products-add', title: 'Add New', route: 'products/setup', icon: 'add-circle-outline' },
+      { id: 'products-categories', title: 'Categories', route: 'products/categories', icon: 'albums-outline' },
+      { id: 'products-brands', title: 'Brands', route: 'products/brands', icon: 'ribbon-outline' },
+      { id: 'products-units', title: 'Units', route: 'products/units', icon: 'resize-outline' },
     ],
+  },
+  {
+    id: 'products-stocks',
+    title: 'Stocks',
+    icon: 'cube-outline',
+    route: 'stocks/lists',
   },
 
   { id: 'category-administration', title: 'Administration', category: true, icon: '' },
@@ -89,9 +96,9 @@ const menuData: MenuItem[] = [
     title: 'Reports',
     icon: 'bar-chart-outline',
     items: [
-      { id: 'reports-customers', title: 'Customers', route: 'reports/customers', icon: '' },
-      { id: 'reports-sales', title: 'Sales', route: 'reports/sales', icon: '' },
-      { id: 'reports-inventory', title: 'Inventory', route: 'reports/inventory', icon: '' },
+      { id: 'reports-customers', title: 'Customers', route: 'reports/customers', icon: 'person-outline' },
+      { id: 'reports-sales', title: 'Sales', route: 'reports/sales', icon: 'stats-chart-outline' },
+      { id: 'reports-inventory', title: 'Inventory', route: 'reports/inventory', icon: 'cube-outline' },
     ],
   },
 

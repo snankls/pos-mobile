@@ -19,6 +19,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import LoadingScreen from '../../components/LoadingScreen';
+import Pagination from '../../components/Pagination';
 
 interface Brand {
   id: number;
@@ -120,6 +122,9 @@ export default function BrandsScreen() {
       setRefreshing(false);
     }
   };
+      
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   const updatePageRecords = (all: Brand[], currentPage: number, perPageCount: number) => {
     const startIndex = (currentPage - 1) * perPageCount;
@@ -338,51 +343,6 @@ export default function BrandsScreen() {
     </View>
   );
 
-  const Pagination = () => (
-    <View style={styles.pagination}>
-      <View style={styles.paginationInfo}>
-        <Text style={styles.paginationText}>
-          Showing {records.length} of {totalItems}
-        </Text>
-      </View>
-      <View style={styles.paginationControls}>
-        <TouchableOpacity
-          disabled={page <= 1}
-          onPress={() => setPage(page - 1)}
-          style={[styles.pageButton, page <= 1 && styles.pageButtonDisabled]}
-        >
-          <Ionicons
-            name="chevron-back-outline"
-            size={20}
-            color={page <= 1 ? '#C7C7CC' : '#007AFF'}
-          />
-        </TouchableOpacity>
-        <Text style={styles.pageIndicatorText}>
-          Page {page} of {totalPages}
-        </Text>
-        <TouchableOpacity
-          disabled={page >= totalPages}
-          onPress={() => setPage(page + 1)}
-          style={[styles.pageButton, page >= totalPages && styles.pageButtonDisabled]}
-        >
-          <Ionicons
-            name="chevron-forward-outline"
-            size={20}
-            color={page >= totalPages ? '#C7C7CC' : '#007AFF'}
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -409,7 +369,6 @@ export default function BrandsScreen() {
             renderItem={({ item }) => <TableRow item={item} />}
             keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={<TableHeader />}
-            ListFooterComponent={<Pagination />}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
             }
@@ -417,6 +376,15 @@ export default function BrandsScreen() {
           />
         </ScrollView>
       )}
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        currentCount={records.length}
+        onPageChange={setPage}
+      />
 
       {/* Add/Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide" transparent onRequestClose={() => setEditModalVisible(false)}>

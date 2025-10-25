@@ -18,12 +18,13 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import LoadingScreen from '../../components/LoadingScreen';
 
 export default function ProductsSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const router = useRouter();
   const { id } = useLocalSearchParams();
 
@@ -44,6 +45,7 @@ export default function ProductsSetupScreen() {
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
+  const [statusOptions, setStatusOptions] = useState<any[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<any>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
@@ -58,10 +60,12 @@ export default function ProductsSetupScreen() {
   const [modalTitle, setModalTitle] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredData, setFilteredData] = useState<any[]>([]);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   useEffect(() => {
     if (token) {
       fetchDropdownData();
+      fetchStatus();
       if (id) fetchProduct(id as string);
       else resetForm();
     }
@@ -157,6 +161,31 @@ export default function ProductsSetupScreen() {
     }
   };
 
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
+
+  const fetchStatus = async () => {
+    if (!token) return;
+
+    try {
+      const res = await axios.get(`${API_URL}/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.data && typeof res.data.data === 'object') {
+        const statusData = res.data.data;
+        const statusArray = Object.entries(statusData).map(([key, value]) => ({
+          id: key,
+          key: key,
+          value: value
+        }));
+        setStatusOptions(statusArray);
+      }
+    } catch (err: any) {
+      console.error('Fetch status error:', err);
+    }
+  };
+
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
@@ -180,16 +209,19 @@ export default function ProductsSetupScreen() {
         setModalData(units);
         setModalTitle('Select Unit');
         break;
-      case 'status':
-        setModalData([
-          { id: 'Active', name: 'Active' },
-          { id: 'Inactive', name: 'Inactive' }
-        ]);
-        setModalTitle('Select Status');
-        break;
     }
     
     setModalVisible(true);
+  };
+
+  const getSelectedStatusName = () => {
+    if (!form.status) return 'Select One';
+
+    const selected = statusOptions.find(
+      (item) => String(item.id) === String(form.status)
+    );
+
+    return selected ? (selected.value || selected.name || selected.key) : form.status;
   };
 
   const handleSelectItem = (item: any) => {
@@ -202,9 +234,15 @@ export default function ProductsSetupScreen() {
       status: 'status'
     };
 
+    // for status, id and value are same — "Active", "Inactive"
     handleChange(fieldMap[modalType], item.id);
     setModalVisible(false);
-    setSearchQuery(''); // Clear search when item is selected
+    setSearchQuery('');
+  };
+
+  const handleStatusSelect = (status: string) => {
+    handleChange('status', status);
+    setStatusModalVisible(false);
   };
 
   // Fixed selection functions - they now properly find the selected item
@@ -393,14 +431,6 @@ export default function ProductsSetupScreen() {
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -517,13 +547,16 @@ export default function ProductsSetupScreen() {
         {formErrors.description && <Text style={styles.errorText}>{formErrors.description[0]}</Text>}
       </View>
 
+      {/* Status - Modal Version */}
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Status</Text>
         <TouchableOpacity 
           style={styles.modalTrigger}
-          onPress={() => openModal('status')}
+          onPress={() => setStatusModalVisible(true)}
         >
-          <Text style={styles.modalTriggerText}>{form.status}</Text>
+          <Text style={form.status ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {form.status || 'Select Status'}
+          </Text>
           <Ionicons name="chevron-down" size={20} color="#6B7280" />
         </TouchableOpacity>
       </View>
@@ -551,54 +584,43 @@ export default function ProductsSetupScreen() {
 
       {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}
 
-      {/* Modal */}
+      {/* Status Selection Modal */}
       <Modal
-        visible={modalVisible}
+        visible={statusModalVisible}
+        transparent
         animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => setStatusModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{modalTitle}</Text>
+              <Text style={styles.modalTitle}>Select Status</Text>
               <TouchableOpacity 
-                onPress={() => setModalVisible(false)}
+                onPress={() => setStatusModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            
-            {/* Search Bar - Only show for category, brand, unit */}
-            {(modalType === 'category' || modalType === 'brand' || modalType === 'unit') && (
-              <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder={`Search ${modalTitle.toLowerCase()}...`}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  clearButtonMode="while-editing"
-                />
-                {searchQuery ? (
-                  <TouchableOpacity onPress={clearSearch} style={styles.clearSearchButton}>
-                    <Ionicons name="close-circle" size={20} color="#999" />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            )}
-            
+
             <FlatList
-              data={filteredData}
-              renderItem={renderModalItem}
-              keyExtractor={(item) => String(item.id)}
-              contentContainerStyle={
-                filteredData.length === 0 
-                  ? styles.modalListContentEmpty 
-                  : styles.modalListContent
-              }
-              ListEmptyComponent={renderEmptyModal}
+              data={statusOptions}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.modalItem,
+                    form.status === item.key && styles.selectedModalItem
+                  ]}
+                  onPress={() => handleStatusSelect(item.key)}
+                >
+                  <Text style={styles.modalItemText}>{item.value}</Text>
+                  {form.status === item.key && (
+                    <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.modalListContent}
             />
           </View>
         </View>

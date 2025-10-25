@@ -8,17 +8,18 @@ import {
   ScrollView, 
   StyleSheet, 
   ActivityIndicator,
-  Platform
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function CompaniesScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
+
   const { token } = useAuth();
   const router = useRouter();
 
@@ -29,9 +30,9 @@ export default function CompaniesScreen() {
     image: null
   });
 
+  const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
   const [formErrors, setFormErrors] = useState<any>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [globalErrorMessage, setGlobalErrorMessage] = useState('');
@@ -43,7 +44,7 @@ export default function CompaniesScreen() {
 
   const fetchCompany = async () => {
     try {
-      setFetching(true);
+      setLoading(true);
 
       const res = await axios.get(`${API_URL}/user/companies`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -79,9 +80,12 @@ export default function CompaniesScreen() {
       console.error('Fetch error:', error.response?.data || error.message);
       setGlobalErrorMessage('Failed to load company data.');
     } finally {
-      setFetching(false);
+      setLoading(false);
     }
   };
+    
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   const handleFileSelected = async () => {
     try {
@@ -174,15 +178,6 @@ export default function CompaniesScreen() {
       setIsLoading(false);
     }
   };
-
-  if (fetching) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loaderText}>Loading company data...</Text>
-      </View>
-    );
-  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

@@ -20,7 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import LoadingScreen from '../../components/LoadingScreen';
 import Pagination from '../../components/Pagination';
 
-interface Product {
+interface Stock {
   id: number;
   image?: string;
   sku?: string;
@@ -37,13 +37,13 @@ interface Product {
   created_at?: string;
 }
 
-export default function ProductsListsScreen() {
+export default function StocksListsScreen() {
   const router = useRouter();
   const { token, logout } = useAuth();
 
   const perPage = 20;
-  const [allRecords, setAllRecords] = useState<Product[]>([]);
-  const [records, setRecords] = useState<Product[]>([]);
+  const [allRecords, setAllRecords] = useState<Stock[]>([]);
+  const [records, setRecords] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -70,7 +70,7 @@ export default function ProductsListsScreen() {
     try {
       setLoading(true);
       setError('');
-      const res = await axios.get(`${API_URL}/products`, {
+      const res = await axios.get(`${API_URL}/stocks`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -97,7 +97,7 @@ export default function ProductsListsScreen() {
   // ✅ Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
-  const updatePageRecords = (all: Product[], currentPage: number, perPageCount: number) => {
+  const updatePageRecords = (all: Stock[], currentPage: number, perPageCount: number) => {
     const startIndex = (currentPage - 1) * perPageCount;
     const endIndex = startIndex + perPageCount;
     setRecords(all.slice(startIndex, endIndex));
@@ -108,10 +108,10 @@ export default function ProductsListsScreen() {
     fetchRecords();
   };
 
-  const handleDelete = async (product: Product) => {
+  const handleDelete = async (stock: Stock) => {
     Alert.alert(
-      'Delete Product',
-      `Are you sure you want to delete "${product.name}"?`,
+      'Delete Stock',
+      `Are you sure you want to delete "${stock.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -119,7 +119,7 @@ export default function ProductsListsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${API_URL}/products/${product.id}`, {
+              await axios.delete(`${API_URL}/stocks/${stock.id}`, {
                 headers: { Authorization: `Bearer ${token}` },
               });
               fetchRecords();
@@ -151,7 +151,7 @@ export default function ProductsListsScreen() {
     id: 50,
     image: 70,
     sku: 100,
-    product_name: 180,
+    stock_name: 180,
     brand_id: 100,
     category_id: 100,
     unit_id: 100,
@@ -167,7 +167,7 @@ export default function ProductsListsScreen() {
     id: 'ID',
     image: 'Image',
     sku: 'SKU',
-    product_name: 'Product Name',
+    stock_name: 'Stock Name',
     brand_id: 'Brand',
     category_id: 'Category',
     unit_id: 'Units',
@@ -189,7 +189,7 @@ export default function ProductsListsScreen() {
     </View>
   );
 
-  const TableRow = ({ item }: { item: Product }) => (
+  const TableRow = ({ item }: { item: Stock }) => (
     <View style={styles.tableRow}>
       <View style={{ width: COLUMN_WIDTHS.id }}>
         <Text style={styles.cellText}>{item.id}</Text>
@@ -199,7 +199,7 @@ export default function ProductsListsScreen() {
         <Image
           source={
             item.image_url
-              ? { uri: `${IMAGE_URL}/uploads/products/${item.image_url}` }
+              ? { uri: `${IMAGE_URL}/uploads/stocks/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
           style={{ width: 50, height: 50 }}
@@ -211,7 +211,7 @@ export default function ProductsListsScreen() {
         <Text style={styles.cellText}>{item.sku}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.product_name }}>
+      <View style={{ width: COLUMN_WIDTHS.stock_name }}>
         <Text style={styles.cellText}>{item.name}</Text>
       </View>
 
@@ -257,7 +257,7 @@ export default function ProductsListsScreen() {
         <View style={styles.actionButtons}>
           {/* View Button */}
           <TouchableOpacity
-            onPress={() => router.push(`/(drawer)/products/view?id=${item.id}`)}
+            onPress={() => router.push(`/(drawer)/stocks/view?id=${item.id}`)}
             style={[styles.actionButton, styles.viewButton]}
           >
             <Ionicons name="eye-outline" size={18} color="#28A745" />
@@ -265,7 +265,7 @@ export default function ProductsListsScreen() {
 
           {/* Edit Button */}
           <TouchableOpacity
-            onPress={() => router.push(`/(drawer)/products/setup?id=${item.id}`)}
+            onPress={() => router.push(`/(drawer)/stocks/setup?id=${item.id}`)}
             style={[styles.actionButton, styles.editButton]}
           >
             <Ionicons name="create-outline" size={18} color="#007AFF" />
@@ -286,11 +286,11 @@ export default function ProductsListsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Products</Text>
+        <Text style={styles.title}>Stocks</Text>
 
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push('/(drawer)/products/setup')}
+          onPress={() => router.push('/(drawer)/stocks/setup')}
         >
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
