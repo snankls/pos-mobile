@@ -455,8 +455,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     minWidth: 600 
   },
-  headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E' },
-  cellText: { fontSize: 14, color: '#1C1C1E' },
+  headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
+  cellText: { fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
   statusBadge: { 
     paddingHorizontal: 8, 
     paddingVertical: 4, 

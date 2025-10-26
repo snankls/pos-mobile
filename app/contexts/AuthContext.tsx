@@ -1,3 +1,4 @@
+// contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,13 +18,13 @@ interface AuthContextType {
   logout: () => Promise<void>;
   initialized: boolean;
   checkTokenExpiry: () => Promise<boolean>;
+  refreshAuthData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -36,54 +37,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       setUser(res.data);
       await AsyncStorage.setItem('userData', JSON.stringify(res.data));
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        console.log('Error loading user:', error.response?.data || error.message);
-      } else if (error instanceof Error) {
-        console.log('Error loading user:', error.message);
-      } else {
-        console.log('Unknown error loading user:', error);
-      }
+    } catch (error) {
+      console.log('Error loading user:', error);
     }
   };
 
-  // Function to check if token is expired
   const isTokenExpired = (token: string): boolean => {
     try {
-      // JWT tokens are in format: header.payload.signature
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
-      
-      // Check if token has expired (add 5 minute buffer)
       return payload.exp < currentTime - 300;
-    } catch (error) {
-      console.error('Error checking token expiry:', error);
-      return true; // If we can't parse, assume expired
+    } catch {
+      return true;
     }
   };
 
-  // Function to check token expiry and handle accordingly
   const checkTokenExpiry = async (): Promise<boolean> => {
-    try {
-      const storedToken = await AsyncStorage.getItem('authToken');
-      
-      if (!storedToken) {
-        await logout();
-        return false;
-      }
-
-      if (isTokenExpired(storedToken)) {
-        console.log('Token has expired, logging out...');
-        await logout();
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error checking token expiry:', error);
+    const storedToken = await AsyncStorage.getItem('authToken');
+    if (!storedToken || isTokenExpired(storedToken)) {
       await logout();
       return false;
     }
+    return true;
   };
 
   useEffect(() => {
@@ -94,27 +69,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem('userData'),
         ]);
 
-        if (storedToken) {
-          if (!isTokenExpired(storedToken)) {
-            setToken(storedToken);
+        if (storedToken && !isTokenExpired(storedToken)) {
+          setToken(storedToken);
+          if (storedUser) setUser(JSON.parse(storedUser));
+          await loadUser(storedToken);
 
-            // Load fresh user data from API
-            await loadUser(storedToken);
-
-            // Also update local user cache
-            if (user) {
-              await AsyncStorage.setItem('userData', JSON.stringify(user));
-            }
-
-            // Redirect only if on login or root
-            if (pathname === '/login' || pathname === '/') {
-              console.log('Redirecting to dashboard from:', pathname);
-              router.replace('/(drawer)/dashboard');
-            }
-          } else {
-            console.log('Token expired on app start');
-            await logout();
+          if (pathname === '/login' || pathname === '/') {
+            router.replace('/(drawer)/dashboard');
           }
+        } else {
+          await logout();
         }
       } catch (error) {
         console.error('Failed to load auth state', error);
@@ -123,62 +87,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setInitialized(true);
       }
     };
-
     loadAuthState();
   }, [pathname]);
 
   const login = async (token: string, userData: User) => {
-    try {
-      console.log('Logging in with data:', userData);
-      
-      // Store auth data
-      await Promise.all([
-        AsyncStorage.setItem('authToken', token),
-        AsyncStorage.setItem('userData', JSON.stringify(userData)),
-      ]);
-      
-      // Update state
-      setToken(token);
-      setUser(userData);
-      
-      console.log('Login successful, navigating to dashboard...');
-      
-      // Navigate to dashboard
-      router.replace('/(drawer)/dashboard');
-      
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
+    await Promise.all([
+      AsyncStorage.setItem('authToken', token),
+      AsyncStorage.setItem('userData', JSON.stringify(userData)),
+    ]);
+    setToken(token);
+    setUser(userData);
+    router.replace('/(drawer)/dashboard');
   };
 
   const logout = async () => {
-    try {
-      await Promise.all([
-        AsyncStorage.removeItem('authToken'),
-        AsyncStorage.removeItem('userData'),
-      ]);
-      setToken(null);
-      setUser(null);
-      
-      // Only navigate to login if we're not already there
-      if (pathname !== '/login') {
-        router.replace('/login');
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
+    await Promise.all([
+      AsyncStorage.removeItem('authToken'),
+      AsyncStorage.removeItem('userData'),
+    ]);
+    setToken(null);
+    setUser(null);
+    if (pathname !== '/login') router.replace('/login');
+  };
+
+  // 🆕 Added refreshAuthData for GlobalRefresh
+  const refreshAuthData = async () => {
+    const storedToken = await AsyncStorage.getItem('authToken');
+    if (storedToken) {
+      await loadUser(storedToken);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      login, 
-      logout, 
-      initialized,
-      checkTokenExpiry 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        initialized,
+        checkTokenExpiry,
+        refreshAuthData,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -191,5 +142,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthProvider;

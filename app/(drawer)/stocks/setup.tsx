@@ -54,6 +54,7 @@ interface Stock {
 
 export default function StocksSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
   const { token } = useAuth();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -586,7 +587,7 @@ export default function StocksSetupScreen() {
               <Text 
                 style={[
                   !item.product_id ? styles.modalTriggerPlaceholder : styles.modalTriggerText,
-                  { flex: 1, marginRight: 8, numberOfLines: 1 }
+                  { flex: 1, marginRight: 8 }
                 ]} 
                 numberOfLines={1}
               >
@@ -1419,9 +1420,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     marginBottom: 2,
-    width: '100%',
-    numberOfLines: 1,
-    ellipsizeMode: 'tail',
+    width: '100%'
   },
   customerInfo: {
     flex: 1,

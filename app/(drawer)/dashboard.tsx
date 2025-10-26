@@ -18,10 +18,10 @@ import axios from 'axios';
 import LoadingScreen from '../components/LoadingScreen';
 
 export default function Dashboard() {
-  const { user, token } = useAuth();
-  const navigation = useNavigation();
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+  const { user, token } = useAuth();
+  const navigation = useNavigation();
   const [dashboardData, setDashboardData] = useState({
     products_count: 0,
     customers_count: 0,

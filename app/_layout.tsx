@@ -3,7 +3,6 @@ import { Stack } from "expo-router";
 import { AuthProvider } from "./contexts/AuthContext";
 import { View, Text, StyleSheet } from "react-native";
 import { ReactNode } from "react";
-import { Ionicons } from '@expo/vector-icons';
 import Footer from "./components/Footer";
 
 function AppLayout({ children }: { children: ReactNode }) {
@@ -21,7 +20,6 @@ export default function RootLayout() {
       <AppLayout>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="login" />
-          <Stack.Screen name="(drawer)" />
         </Stack>
       </AppLayout>
     </AuthProvider>
