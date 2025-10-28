@@ -5,20 +5,18 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   StatusBar,
-  Image,
   Alert,
   ScrollView,
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
 import Pagination from '../../components/Pagination';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Invoice {
   id: number;
@@ -36,6 +34,8 @@ interface Invoice {
 }
 
 export default function InvoicesListsScreen() {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
   const router = useRouter();
   const { token, logout } = useAuth();
 
@@ -49,8 +49,6 @@ export default function InvoicesListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   useFocusEffect(
     useCallback(() => {

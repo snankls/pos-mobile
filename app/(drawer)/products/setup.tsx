@@ -13,12 +13,12 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProductsSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;

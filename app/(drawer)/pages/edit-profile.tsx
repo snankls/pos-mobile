@@ -11,13 +11,13 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import axios from 'axios';
+import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
-import { useRouter } from 'expo-router';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function EditProfileScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;

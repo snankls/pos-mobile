@@ -15,12 +15,12 @@ import {
   ScrollView,
 } from 'react-native';
 import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
 import Pagination from '../../components/Pagination';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Brand {
   id: number;
@@ -32,6 +32,10 @@ interface Brand {
 }
 
 export default function BrandsScreen() {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  const UPLOAD_PATH = process.env.EXPO_PUBLIC_UPLOAD_PATH;
+  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
+
   const { token, logout } = useAuth();
   const navigation = useNavigation();
 
@@ -57,11 +61,7 @@ export default function BrandsScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const UPLOAD_PATH = process.env.EXPO_PUBLIC_UPLOAD_PATH;
-  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
-
-  useEffect(() => {
+ useEffect(() => {
     fetchRecords();
     fetchStatus();
   }, []);

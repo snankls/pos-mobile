@@ -12,12 +12,12 @@ import {
   ScrollView,
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
 import Pagination from '../../components/Pagination';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Customer {
   id: number;

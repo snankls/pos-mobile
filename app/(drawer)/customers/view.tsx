@@ -11,10 +11,10 @@ import {
   Alert
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function CustomersViewScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -156,7 +156,7 @@ export default function CustomersViewScreen() {
         {/* Financial Information */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <FontAwesome5 name="money-bill-wave" size={16} color="#374151" />
+            <Ionicons name="cash-outline" size={16} color="#374151" />
             <Text style={styles.sectionTitle}>Financial Information</Text>
           </View>
           

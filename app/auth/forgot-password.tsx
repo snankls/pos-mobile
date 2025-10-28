@@ -6,27 +6,31 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import axios from "axios";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ForgotPassword() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  const NG_URL = process.env.EXPO_PUBLIC_NG_URL;
+  
   const router = useRouter();
-
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
 
   const onSubmit = async () => {
-    if (!email) {
-      Alert.alert("Validation Error", "Please enter your email address.");
+    if (!identifier.trim()) {
+      setMessage("Please enter your username or email address.");
+      setMessageType("error");
       return;
     }
 
@@ -35,15 +39,31 @@ export default function ForgotPassword() {
     setMessageType(null);
 
     try {
-      const response = await axios.post(`${API_URL}/forgot-password`, { email });
-      setMessage(response.data.message || "Password recovery email sent!");
+      // Check if input looks like an email
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+      // Send username or email, depending on what user entered
+      const payload = isEmail
+        ? { email: identifier.trim(), ng_url: NG_URL }
+        : { username: identifier.trim(), ng_url: NG_URL };
+
+      const response = await axios.post(`${API_URL}/forgot-password`, payload, {
+        headers: { Accept: "application/json" },
+      });
+
+      const message =
+        response.data?.message || "Password recovery email has been sent!";
+      setMessage(message);
       setMessageType("success");
     } catch (error: any) {
-      console.error("Forgot Password Error:", error);
-      setMessage(
+      console.error("Forgot Password Error:", error?.response?.data || error);
+
+      const errMsg =
         error.response?.data?.message ||
-          "Unable to process request. Please try again later."
-      );
+        error.response?.data?.error ||
+        "Unable to process request. Please try again later.";
+
+      setMessage(errMsg);
       setMessageType("error");
     } finally {
       setLoading(false);
@@ -51,78 +71,92 @@ export default function ForgotPassword() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.logoImage}
-          />
-          <Text style={styles.subtitle}>Enter email address to recover your password.</Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Username / Email address</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              editable={!loading}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={onSubmit}
-            disabled={loading}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Recover Password</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* ✅ Message Area */}
-          {message ? (
-            <Text
-              style={[
-                styles.messageText,
-                messageType === "error" ? styles.errorText : styles.successText,
-              ]}
-            >
-              {message}
-            </Text>
-          ) : null}
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.forgotText}>
-              Already have an account?{" "}
-              <Text
-                style={styles.linkText}
-                onPress={() => router.push("/auth/login")}
-              >
-                Login
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../../assets/images/logo.png")}
+                style={styles.logoImage}
+              />
+              <Text style={styles.subtitle}>
+                Enter your username or email address to recover your password.
               </Text>
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            </View>
+
+            <View style={styles.formContainer}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Username / Email Address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!loading}
+                  returnKeyType="done"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                onPress={onSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Recover Password</Text>
+                )}
+              </TouchableOpacity>
+
+              {message ? (
+                <Text
+                  style={[
+                    styles.messageText,
+                    messageType === "error" ? styles.errorText : styles.successText,
+                  ]}
+                >
+                  {message}
+                </Text>
+              ) : null}
+
+              <View style={styles.footerContainer}>
+                <Text style={styles.forgotText}>
+                  Already have an account?{" "}
+                  <Text
+                    style={styles.linkText}
+                    onPress={() => router.push("/auth/login")}
+                  >
+                    Login
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fff",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -157,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
@@ -197,6 +231,9 @@ const styles = StyleSheet.create({
   },
   successText: {
     color: "#28A745",
+  },
+  footerContainer: {
+    marginTop: 24,
   },
   forgotText: {
     textAlign: "center",

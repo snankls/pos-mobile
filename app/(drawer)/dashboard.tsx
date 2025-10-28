@@ -3,19 +3,15 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  TouchableOpacity, 
   ScrollView,
-  StatusBar,
-  Platform,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../components/LoadingScreen';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;

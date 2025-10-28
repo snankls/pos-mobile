@@ -12,11 +12,12 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ChangePasswordScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
   const { token } = useAuth();
   const router = useRouter();
 

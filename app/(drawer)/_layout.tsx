@@ -1,8 +1,8 @@
 // app/(drawer)/_layout.tsx
 import React from "react";
-import { Drawer } from "expo-router/drawer";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View, StatusBar, Platform } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Drawer } from "expo-router/drawer";
 import DrawerContent from "../components/DrawerContent";
 import Header from "../components/Header";
 

@@ -4,19 +4,19 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
   Alert,
   Platform
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function InvoiceViewScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
   const { token } = useAuth();
   const { id } = useLocalSearchParams();
   const router = useRouter();

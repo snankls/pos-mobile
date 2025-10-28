@@ -9,7 +9,7 @@ export default function RootLayout() {
     <AuthProvider>
       <View style={styles.container}>
         <View style={styles.content}>
-          <Slot /> {/* This renders nested layouts like auth/_layout.tsx */}
+          <Slot />
         </View>
         <Footer />
       </View>

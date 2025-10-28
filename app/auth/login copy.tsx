@@ -11,11 +11,8 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
@@ -37,25 +34,57 @@ export default function Login() {
       return;
     }
 
+    // Basic validation
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
     setIsLoading(true);
     setMessage({ text: '', type: null });
+
+    // Add timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: identifier, password }),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          email: isEmail ? identifier : undefined,
+          username: !isEmail ? identifier : undefined,
+          password: password,
+        }),
+        signal: controller.signal,
       });
-      const data = await response.json();
 
-      if (response.ok && data?.data?.authorisation?.token) {
-        await login(data.data.authorisation.token, data.data.user);
-        setMessage({ text: 'Login successful!', type: 'success' });
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+      const userData = data?.data?.user;
+      const authData = data?.data?.authorisation;
+
+      if (response.ok && authData?.token && userData) {
+        // Validate token before proceeding
+        if (!isValidToken(authData.token)) {
+          setMessage({ 
+            text: 'Invalid authentication token received.', 
+            type: 'error' 
+          });
+          return;
+        }
+
+        await login(authData.token, userData);
+        setIdentifier('');
+        setPassword('');
+        setMessage({ text: 'Login successful! Redirecting...', type: 'success' });
       } else {
-        setMessage({ text: data.message || 'Login failed', type: 'error' });
+        handleLoginError(response, data);
       }
-    } catch (err) {
-      setMessage({ text: 'Network error. Please try again.', type: 'error' });
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      handleLoginException(error);
     } finally {
       setIsLoading(false);
     }
@@ -163,98 +192,89 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {/* Tap anywhere to dismiss keyboard */}
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoImage}
+          />
+          <Text style={styles.subtitle}>Welcome back! Log in to your account.</Text>
+        </View>
+
+        <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Username / Email address</Text>
+            <TextInput
+              style={styles.input}
+              value={identifier}
+              onChangeText={setIdentifier}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              editable={!isLoading}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              editable={!isLoading}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TouchableOpacity
+              style={styles.forgot}
+              onPress={() => router.push('/auth/forgot-password')}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={isLoading}
           >
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../assets/images/logo.png')}
-                style={styles.logoImage}
-              />
-              <Text style={styles.subtitle}>Welcome back! Log in to your account.</Text>
-            </View>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
 
-            <View style={styles.formContainer}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Username / Email address</Text>
-                <TextInput
-                  style={styles.input}
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.forgot}
-                onPress={() => router.push('/auth/forgot-password')}
-              >
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-                onPress={handleLogin}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.loginButtonText}>Sign In</Text>
-                )}
-              </TouchableOpacity>
-
-              {message.text ? (
-                <Text
-                  style={[
-                    styles.messageText,
-                    message.type === 'error' ? styles.errorText : styles.successText,
-                  ]}
-                >
-                  {message.text}
-                </Text>
-              ) : null}
-            </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          {/* ✅ Message Area */}
+          {message.text ? (
+            <Text
+              style={[
+                styles.messageText,
+                message.type === 'error' ? styles.errorText : styles.successText,
+              ]}
+            >
+              {message.text}
+            </Text>
+          ) : null}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
-  scrollContent: {
+  scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -262,7 +282,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 50,
   },
   logoImage: {
     width: 150,
@@ -278,7 +298,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputContainer: {
-    marginBottom: 18,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -298,7 +318,7 @@ const styles = StyleSheet.create({
   },
   forgot: {
     alignSelf: 'flex-end',
-    marginBottom: 20,
+    marginTop: 8,
   },
   forgotText: {
     color: '#007AFF',

@@ -29,6 +29,8 @@ interface Unit {
 }
 
 export default function UnitsScreen() {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
   const { token, logout } = useAuth();
   const navigation = useNavigation();
 
@@ -52,8 +54,6 @@ export default function UnitsScreen() {
   const [editStatus, setEditStatus] = useState('Active');
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
-
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   useEffect(() => {
     fetchRecords();

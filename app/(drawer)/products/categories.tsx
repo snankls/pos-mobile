@@ -15,12 +15,12 @@ import {
   ScrollView
 } from 'react-native';
 import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
 import Pagination from '../../components/Pagination';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Category {
   id: number;

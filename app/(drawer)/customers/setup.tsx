@@ -13,16 +13,15 @@ import {
   Modal,
   FlatList
 } from 'react-native';
+import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function CustomersSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const UPLOAD_PATH = process.env.EXPO_PUBLIC_UPLOAD_PATH;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
   const { token } = useAuth();
