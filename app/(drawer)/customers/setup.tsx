@@ -180,7 +180,7 @@ export default function CustomersSetupScreen() {
         null;
 
       if (imageName) {
-        setImagePreview(`${IMAGE_URL}/uploads/customers/${imageName}`);
+        setImagePreview(`${IMAGE_URL}/customers/${imageName}`);
       } else {
         setImagePreview(null);
       }

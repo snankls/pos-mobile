@@ -391,7 +391,7 @@ export default function InvoicesSetupScreen() {
       const transformedProducts = res.data.map((product: Product) => ({
         ...product,
         id: product.id.toString(), // Convert to string
-        product_label: `${product.name} (${product.sku}) - ${settings.currency_sign || '$'} ${product.sale_price}`,
+        product_label: `${product.name} (${product.sku}) - ${settings.currency || '$'} ${product.sale_price}`,
         price: product.sale_price
       }));
       
@@ -815,7 +815,7 @@ export default function InvoicesSetupScreen() {
                           {product.name}
                         </Text>
                         <Text style={styles.productDetails}>
-                          SKU: {product.sku} • Price: {settings.currency_sign} {product.sale_price}
+                          SKU: {product.sku} • Price: {settings.currency} {product.sale_price}
                         </Text>
                         <Text style={styles.productUnit}>
                           Unit: {product.unit_name}
@@ -889,7 +889,7 @@ export default function InvoicesSetupScreen() {
               disabled={!item.product_id || isLoading}
             >
               <Text style={styles.modalTriggerText}>
-                {item.discountType === 'Percentage' ? '%' : settings.currency_sign}
+                {item.discountType === 'Percentage' ? '%' : settings.currency}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6B7280" />
             </TouchableOpacity>
@@ -937,7 +937,7 @@ export default function InvoicesSetupScreen() {
                   <FlatList
                     data={[
                       { id: 'Percentage', name: 'Percentage (%)' },
-                      { id: 'Fixed', name: `Fixed (${settings.currency_sign})` }
+                      { id: 'Fixed', name: `Fixed (${settings.currency})` }
                     ]}
                     keyExtractor={(type) => type.id}
                     renderItem={({ item: type }) => (
@@ -973,14 +973,14 @@ export default function InvoicesSetupScreen() {
         {/* Price */}
         <View style={[styles.cell, styles.cellPrice]}>
           <Text style={styles.priceText} numberOfLines={1}>
-            {settings.currency_sign} {item.price || '0'}
+            {settings.currency} {item.price || '0'}
           </Text>
         </View>
 
         {/* Total */}
         <View style={[styles.cell, styles.cellTotal]}>
           <Text style={styles.totalText} numberOfLines={1}>
-            {settings.currency_sign} {item.total_amount || '0'}
+            {settings.currency} {item.total_amount || '0'}
           </Text>
         </View>
 
@@ -1148,15 +1148,15 @@ export default function InvoicesSetupScreen() {
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Price</Text>
-              <Text style={styles.totalValue}>{settings.currency_sign} {totalPrice.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{settings.currency} {totalPrice.toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Discount</Text>
-              <Text style={styles.totalValue}>{settings.currency_sign} {totalDiscount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{settings.currency} {totalDiscount.toFixed(2)}</Text>
             </View>
             <View style={[styles.totalRow, styles.grandTotal]}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalValue}>{settings.currency_sign} {grandTotal.toFixed(2)}</Text>
+              <Text style={styles.grandTotalValue}>{settings.currency} {grandTotal.toFixed(2)}</Text>
             </View>
           </View>
         )}

@@ -20,14 +20,14 @@ export default function SettingsScreen() {
 
   type SettingsForm = {
     invoice_prefix: string;
-    invoice_count: string;
-    currency_sign: string;
+    invoice_limit: string;
+    currency: string;
   };
 
   const [form, setForm] = useState<SettingsForm>({
     invoice_prefix: '',
-    invoice_count: '',
-    currency_sign: '',
+    invoice_limit: '',
+    currency: '',
   });
 
   const [errors, setErrors] = useState<any>({});
@@ -50,8 +50,8 @@ export default function SettingsScreen() {
       const settingsData = res.data;
       setForm({
         invoice_prefix: settingsData.invoice_prefix?.data_value || '',
-        invoice_count: settingsData.invoice_count?.data_value || '',
-        currency_sign: settingsData.currency_sign?.data_value || '',
+        invoice_limit: settingsData.invoice_limit?.data_value || '',
+        currency: settingsData.currency?.data_value || '',
       });
     } catch (err: any) {
       console.error('Error fetching settings:', err.response?.data || err.message);
@@ -74,11 +74,11 @@ export default function SettingsScreen() {
     setErrors({});
     setSuccessMessage('');
 
-    if (!form.invoice_prefix || !form.invoice_count || !form.currency_sign) {
+    if (!form.invoice_prefix || !form.invoice_limit || !form.currency) {
       setErrors({
         invoice_prefix: !form.invoice_prefix ? ['This field is required'] : null,
-        invoice_count: !form.invoice_count ? ['This field is required'] : null,
-        currency_sign: !form.currency_sign ? ['This field is required'] : null,
+        invoice_limit: !form.invoice_limit ? ['This field is required'] : null,
+        currency: !form.currency ? ['This field is required'] : null,
       });
       setIsLoading(false);
       return;
@@ -87,8 +87,8 @@ export default function SettingsScreen() {
     try {
       const payload = [
         { data_name: 'invoice_prefix', data_value: form.invoice_prefix },
-        { data_name: 'invoice_count', data_value: form.invoice_count },
-        { data_name: 'currency_sign', data_value: form.currency_sign },
+        { data_name: 'invoice_limit', data_value: form.invoice_limit },
+        { data_name: 'currency', data_value: form.currency },
       ];
 
       await axios.post(`${API_URL}/settings`, payload, {
@@ -130,20 +130,20 @@ export default function SettingsScreen() {
         <Text style={styles.label}>Invoice Number Total *</Text>
         <TextInput
           style={styles.input}
-          value={form.invoice_count}
-          onChangeText={(text) => handleChange('invoice_count', text)}
+          value={form.invoice_limit}
+          onChangeText={(text) => handleChange('invoice_limit', text)}
           keyboardType="numeric"
         />
-        {errors.invoice_count && <Text style={styles.error}>{errors.invoice_count[0]}</Text>}
+        {errors.invoice_limit && <Text style={styles.error}>{errors.invoice_limit[0]}</Text>}
 
         {/* Currency Sign */}
         <Text style={styles.label}>Currency Sign *</Text>
         <TextInput
           style={styles.input}
-          value={form.currency_sign}
-          onChangeText={(text) => handleChange('currency_sign', text)}
+          value={form.currency}
+          onChangeText={(text) => handleChange('currency', text)}
         />
-        {errors.currency_sign && <Text style={styles.error}>{errors.currency_sign[0]}</Text>}
+        {errors.currency && <Text style={styles.error}>{errors.currency[0]}</Text>}
 
         {/* Submit */}
         <TouchableOpacity

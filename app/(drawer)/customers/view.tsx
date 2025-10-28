@@ -69,7 +69,7 @@ export default function CustomersViewScreen() {
   }
 
   const imageUrl = customer.image_url
-    ? `${IMAGE_URL}/uploads/customers/${customer.image_url}`
+    ? `${IMAGE_URL}/customers/${customer.image_url}`
     : null;
 
   return (

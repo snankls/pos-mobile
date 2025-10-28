@@ -69,39 +69,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem('userData'),
         ]);
 
-        const isAuthRoute =
-          pathname?.startsWith('/auth') || pathname === '/' || pathname === '/';
-
         if (storedToken && !isTokenExpired(storedToken)) {
           setToken(storedToken);
           if (storedUser) setUser(JSON.parse(storedUser));
           await loadUser(storedToken);
 
-          // ✅ Redirect to dashboard only from login or root
           if (pathname === '/auth/login' || pathname === '/') {
             router.replace('/(drawer)/dashboard');
           }
         } else {
-          // ✅ Only redirect to login if not already on an auth route
-          await AsyncStorage.removeItem('authToken');
-          await AsyncStorage.removeItem('userData');
-          setToken(null);
-          setUser(null);
-
-          if (!isAuthRoute) {
-            router.replace('/auth/login');
-          }
+          await logout();
         }
       } catch (error) {
         console.error('Failed to load auth state', error);
-        if (!pathname?.startsWith('/auth')) {
-          router.replace('/auth/login');
-        }
+        await logout();
       } finally {
         setInitialized(true);
       }
     };
-
     loadAuthState();
   }, [pathname]);
 

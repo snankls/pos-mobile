@@ -109,7 +109,7 @@ export default function ProductsViewScreen() {
   }
 
   const imageUrl = product.images && product.images.image_name
-    ? `${IMAGE_URL}/uploads/products/${product.images.image_name}`
+    ? `${IMAGE_URL}/products/${product.images.image_name}`
     : null;
 
   const stockStatus = getStockStatus(product.stock);
@@ -180,14 +180,14 @@ export default function ProductsViewScreen() {
           
           <View style={styles.statCard}>
             <MaterialCommunityIcons name="currency-usd" size={24} color="#10B981" />
-            <Text style={styles.statValue}>{settings.currency_sign}{product.sale_price || '0.00'}</Text>
-            <Text style={styles.statLabel}>Sale Price   {settings.currency_sign}</Text>
+            <Text style={styles.statValue}>{settings.currency}{product.sale_price || '0.00'}</Text>
+            <Text style={styles.statLabel}>Sale Price   {settings.currency}</Text>
           </View>
           
           <View style={styles.statCard}>
             <FontAwesome5 name="chart-line" size={20} color={profit >= 0 ? '#059669' : '#DC2626'} />
             <Text style={[styles.statValue, { color: profit >= 0 ? '#059669' : '#DC2626' }]}>
-              {settings.currency_sign}{profit.toFixed(2)}
+              {settings.currency}{profit.toFixed(2)}
             </Text>
             <Text style={styles.statLabel}>Profit</Text>
           </View>
@@ -203,12 +203,12 @@ export default function ProductsViewScreen() {
           <View style={styles.pricingGrid}>
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Cost Price</Text>
-              <Text style={styles.costPrice}>{settings.currency_sign}{product.cost_price || '0.00'}</Text>
+              <Text style={styles.costPrice}>{settings.currency}{product.cost_price || '0.00'}</Text>
             </View>
             
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Sale Price</Text>
-              <Text style={styles.salePrice}>{settings.currency_sign}{product.sale_price || '0.00'}</Text>
+              <Text style={styles.salePrice}>{settings.currency}{product.sale_price || '0.00'}</Text>
             </View>
             
             <View style={styles.profitItem}>

@@ -5,7 +5,6 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   StatusBar,
   Image,
@@ -35,9 +34,11 @@ interface Customer {
 }
 
 export default function CustomersListsScreen() {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
+
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  
   const { token, logout } = useAuth();
   const navigation = useNavigation();
 
@@ -50,9 +51,6 @@ export default function CustomersListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
   useFocusEffect(
     useCallback(() => {
@@ -156,7 +154,7 @@ export default function CustomersListsScreen() {
     image: 70,
     id_code: 100,
     customer_name: 180,
-    mobile_number: 120,
+    mobile_number: 150,
     whatsapp: 100,
     city: 120,
     status: 80,
@@ -197,7 +195,7 @@ export default function CustomersListsScreen() {
           key={item.id}
           source={
             item.image_url
-              ? { uri: `${IMAGE_URL}/uploads/customers/${item.image_url}` }
+              ? { uri: `${IMAGE_URL}/customers/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
           style={{ width: 50, height: 50, borderRadius: 5 }}
@@ -284,9 +282,19 @@ export default function CustomersListsScreen() {
           <FlatList
             data={records}
             renderItem={({ item }) => <TableRow item={item} />}
-            keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={<TableHeader />}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />}
+            ListEmptyComponent={
+              !loading && (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No records found.</Text>
+                </View>
+              )
+            }
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
+            }
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
           />
         </ScrollView>
       )}
@@ -371,6 +379,16 @@ const styles = StyleSheet.create({
   },
   editButton: { backgroundColor: '#E8F2FF' },
   deleteButton: { backgroundColor: '#FFEAEA' },
+  
+  noDataContainer: {
+    padding: 22,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
+
   pagination: { marginTop: 15, marginBottom: 30, alignItems: 'center', justifyContent: 'center' },
   paginationText: { fontSize: 12, color: '#555', marginBottom: 5 },
   paginationControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },

@@ -342,6 +342,25 @@ export default function BanksScreen() {
           <FlatList
             data={records}
             renderItem={({ item }) => <TableRow item={item} />}
+            ListHeaderComponent={<TableHeader />}
+            ListEmptyComponent={
+              !loading && (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No records found.</Text>
+                </View>
+              )
+            }
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
+            }
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          />
+
+          
+          <FlatList
+            data={records}
+            renderItem={({ item }) => <TableRow item={item} />}
             keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
             ListHeaderComponent={<TableHeader />}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />}
@@ -551,6 +570,15 @@ const styles = StyleSheet.create({
   actionButton: { padding: 6, borderRadius: 6 },
   editButton: { backgroundColor: '#E8F2FF' },
   deleteButton: { backgroundColor: '#FFEAEA' },
+
+  noDataContainer: {
+    padding: 22,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
   
   // Error Styles
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },

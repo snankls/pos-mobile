@@ -89,7 +89,7 @@ export default function EditProfileScreen() {
       });
 
       if (user?.images?.image_name) {
-        setImagePreview(`${IMAGE_URL}/uploads/users/${user.images.image_name}`);
+        setImagePreview(`${IMAGE_URL}/users/${user.images.image_name}`);
       }
     } catch (err: any) {
       console.error('Error loading current user:', err.response?.data || err.message);

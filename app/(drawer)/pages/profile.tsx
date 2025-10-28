@@ -66,7 +66,7 @@ export default function UserProfileScreen() {
   }
 
   const imageUrl = user?.images?.image_name
-    ? `${IMAGE_URL}/uploads/users/${user.images.image_name}`
+    ? `${IMAGE_URL}/users/${user.images.image_name}`
     : null;
 
   return (

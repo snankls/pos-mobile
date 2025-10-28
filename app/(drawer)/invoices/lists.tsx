@@ -231,15 +231,15 @@ export default function InvoicesListsScreen() {
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.total_price }}>
-        <Text style={styles.cellText}>{settings.currency_sign}{item.total_price}</Text>
+        <Text style={styles.cellText}>{settings.currency}{item.total_price}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.total_discount }}>
-        <Text style={styles.cellText}>{settings.currency_sign}{item.total_discount}</Text>
+        <Text style={styles.cellText}>{settings.currency}{item.total_discount}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.grand_total }}>
-        <Text style={styles.cellText}>{settings.currency_sign}{item.grand_total || '-'}</Text>
+        <Text style={styles.cellText}>{settings.currency}{item.grand_total || '-'}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.status }}>
@@ -314,9 +314,19 @@ export default function InvoicesListsScreen() {
           <FlatList
             data={records}
             renderItem={({ item }) => <TableRow item={item} />}
-            keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={<TableHeader />}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />}
+            ListEmptyComponent={
+              !loading && (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No records found.</Text>
+                </View>
+              )
+            }
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
+            }
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
           />
         </ScrollView>
       )}
@@ -401,6 +411,16 @@ const styles = StyleSheet.create({
   },
   editButton: { backgroundColor: '#E8F2FF' },
   deleteButton: { backgroundColor: '#FFEAEA' },
+  
+  noDataContainer: {
+    padding: 22,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
+  
   pagination: { marginTop: 15, marginBottom: 30, alignItems: 'center', justifyContent: 'center' },
   paginationText: { fontSize: 12, color: '#555', marginBottom: 5 },
   paginationControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },

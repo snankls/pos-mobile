@@ -53,7 +53,7 @@ export default function Header() {
   }, [token]);
 
   const imageUrl = currentUser?.images?.image_name
-    ? `${IMAGE_URL}/uploads/users/${currentUser.images.image_name}`
+    ? `${IMAGE_URL}/users/${currentUser.images.image_name}`
     : null;
 
   // Generate PIN

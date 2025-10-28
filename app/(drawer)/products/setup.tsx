@@ -150,7 +150,7 @@ export default function ProductsSetupScreen() {
         null;
 
       if (imageName) {
-        setImagePreview(`${IMAGE_URL}/uploads/products/${imageName}`);
+        setImagePreview(`${IMAGE_URL}/products/${imageName}`);
       } else {
         setImagePreview(null);
       }

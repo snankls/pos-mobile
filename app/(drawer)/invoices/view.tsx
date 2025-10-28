@@ -295,7 +295,7 @@ export default function InvoiceViewScreen() {
                   </Text>
                 </View>
                 <Text style={styles.itemTotal}>
-                  {settings.currency_sign}{item.total}
+                  {settings.currency}{item.total}
                 </Text>
               </View>
             ))}
@@ -314,7 +314,7 @@ export default function InvoiceViewScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>
-              {settings.currency_sign}{invoice.total_price}
+              {settings.currency}{invoice.total_price}
             </Text>
           </View>
           
@@ -322,7 +322,7 @@ export default function InvoiceViewScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount</Text>
               <Text style={[styles.summaryValue, styles.discountValue]}>
-                {settings.currency_sign}{invoice.total_discount}
+                {settings.currency}{invoice.total_discount}
               </Text>
             </View>
           )}
@@ -330,7 +330,7 @@ export default function InvoiceViewScreen() {
           <View style={[styles.summaryRow, styles.grandTotalRow]}>
             <Text style={styles.grandTotalLabel}>Grand Total</Text>
             <Text style={styles.grandTotalValue}>
-              {settings.currency_sign}{invoice.grand_total}
+              {settings.currency}{invoice.grand_total}
             </Text>
           </View>
         </View>

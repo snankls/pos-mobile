@@ -12,12 +12,14 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useAuth } from './contexts/AuthContext';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
 
-const Login = () => {
+export default function Login() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const { login } = useAuth();
 
+  const router = useRouter();
+  const { login } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -197,7 +199,7 @@ const Login = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../assets/images/logo.png')}
+            source={require('../../assets/images/logo.png')}
             style={styles.logoImage}
           />
           <Text style={styles.subtitle}>Welcome back! Log in to your account.</Text>
@@ -227,6 +229,15 @@ const Login = () => {
               autoCapitalize="none"
               editable={!isLoading}
             />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TouchableOpacity
+              style={styles.forgot}
+              onPress={() => router.push('/auth/forgot-password')}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -305,6 +316,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  forgot: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   loginButton: {
     backgroundColor: '#007AFF',
     paddingVertical: 16,
@@ -338,5 +358,3 @@ const styles = StyleSheet.create({
     color: '#28A745',
   },
 });
-
-export default Login;

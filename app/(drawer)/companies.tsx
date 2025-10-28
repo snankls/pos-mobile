@@ -70,7 +70,7 @@ export default function CompaniesScreen() {
       });
 
       if (imageFileName) {
-        const fullImageUrl = `${IMAGE_URL}/uploads/companies/${imageFileName}`;
+        const fullImageUrl = `${IMAGE_URL}/companies/${imageFileName}`;
         setImagePreview(fullImageUrl);
       } else {
         setImagePreview(null);

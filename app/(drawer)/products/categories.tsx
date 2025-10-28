@@ -243,7 +243,7 @@ export default function CategoriesScreen() {
     setSelectedRecord(category);
     setEditName(category.name);
     setEditStatus(category.status);
-    setEditImage(category.image_url ? `${IMAGE_URL}/uploads/categories/${category.image_url}` : null);
+    setEditImage(category.image_url ? `${IMAGE_URL}/categories/${category.image_url}` : null);
     setIsEditing(true);
     setEditModalVisible(true);
   };
@@ -311,7 +311,7 @@ export default function CategoriesScreen() {
         <Image
           source={
             item.image_url
-              ? { uri: `${IMAGE_URL}/uploads/categories/${item.image_url}` }
+              ? { uri: `${IMAGE_URL}/categories/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
           style={{ width: 45, height: 45, borderRadius: 6 }}
@@ -370,12 +370,19 @@ export default function CategoriesScreen() {
           <FlatList
             data={records}
             renderItem={({ item }) => <TableRow item={item} />}
-            keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={<TableHeader />}
+            ListEmptyComponent={
+              !loading && (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No records found.</Text>
+                </View>
+              )
+            }
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
             }
             contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
           />
         </ScrollView>
       )}
@@ -545,6 +552,15 @@ const styles = StyleSheet.create({
   actionButton: { padding: 6, borderRadius: 6 },
   editButton: { backgroundColor: '#E8F2FF' },
   deleteButton: { backgroundColor: '#FFEAEA' },
+
+  noDataContainer: {
+    padding: 22,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
   
   // Error Styles
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },

@@ -774,7 +774,7 @@ export default function StocksSetupScreen() {
               </View>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Price</Text>
-                <Text style={styles.totalValue}>{settings.currency_sign || '$'}{totalPrice.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>{settings.currency || '$'}{totalPrice.toFixed(2)}</Text>
               </View>
             </View>
           </View>
