@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -51,6 +52,7 @@ export default function CustomersListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -61,6 +63,35 @@ export default function CustomersListsScreen() {
   useEffect(() => {
     updatePageRecords(allRecords, page, perPage);
   }, [page, allRecords]);
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+
+    if (!text.trim()) {
+      setTotalItems(allRecords.length);
+      setTotalPages(Math.ceil(allRecords.length / perPage));
+      updatePageRecords(allRecords, 1, perPage);
+      setPage(1);
+      return;
+    }
+
+    const lowerText = text.toLowerCase();
+
+    const filtered = allRecords.filter((bank) => {
+      const customerCode = bank.code?.toLowerCase() || '';
+      const customerName = bank.name?.toLowerCase() || '';
+
+      return (
+        customerCode.includes(lowerText) ||
+        customerName.includes(lowerText)
+      );
+    });
+
+    setTotalItems(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / perPage));
+    updatePageRecords(filtered, 1, perPage);
+    setPage(1);
+  };
 
   const fetchRecords = async () => {
     if (!token) return logout();
@@ -266,6 +297,23 @@ export default function CustomersListsScreen() {
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
       </View>
+
+      {/* 🔍 Search Field */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search code, cutomer name..."
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
+      </View>
       
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
@@ -338,6 +386,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '500',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 10,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
   },
   tableHeader: {
     flexDirection: 'row',

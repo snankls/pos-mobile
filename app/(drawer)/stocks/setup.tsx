@@ -14,12 +14,12 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Product {
   id: string;
@@ -30,6 +30,16 @@ interface Product {
   unit_name: string;
   product_label?: string;
   current_stock?: string;
+}
+
+interface Stock {
+  id?: string;
+  stock_number: string;
+  stock_date: string;
+  status: string;
+  total_stock?: string;
+  total_price?: string;
+  items: StockItem[];
 }
 
 interface StockItem {
@@ -43,15 +53,6 @@ interface StockItem {
   total_amount: string;
 }
 
-interface Stock {
-  id?: string;
-  stock_date: string;
-  status: string;
-  total_stock?: string;
-  total_price?: string;
-  items: StockItem[];
-}
-
 export default function StocksSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   
@@ -61,6 +62,7 @@ export default function StocksSetupScreen() {
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<Stock>({
+    stock_number: '',
     stock_date: new Date().toISOString().split('T')[0],
     status: 'Active',
     total_stock: '0',
@@ -90,6 +92,7 @@ export default function StocksSetupScreen() {
 
   const resetForm = () => {
     setCurrentRecord({
+      stock_number: '',
       stock_date: new Date().toISOString().split('T')[0],
       status: 'Active',
       total_stock: '0',
@@ -236,6 +239,7 @@ export default function StocksSetupScreen() {
       // Set the current record with fetched data
       const updatedRecord = {
         id: stockData.id?.toString() || '',
+        stock_number: stockData.stock_number || '',
         stock_date: stockData.stock_date?.split('T')[0] || new Date().toISOString().split('T')[0],
         status: stockData.status || 'Active',
         total_stock: stockData.total_stock || '0',
@@ -449,6 +453,10 @@ export default function StocksSetupScreen() {
   const validateForm = (): boolean => {
     const errors: any = {};
 
+    if (!currentRecord.stock_number) {
+      errors.stock_number = ['Stock number is required'];
+    }
+
     if (!currentRecord.stock_date) {
       errors.stock_date = ['Stock date is required'];
     }
@@ -480,6 +488,24 @@ export default function StocksSetupScreen() {
 
   // Form submission
   const handleSubmit = async (isPost: boolean = false) => {
+    // 🔹 If posting, confirm first
+    if (isPost) {
+      Alert.alert(
+        "Confirm Post",
+        "Are you sure you want to post this stock? Once posted, it cannot be edited.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Yes, Post", onPress: () => handleSubmitConfirmed(true) },
+        ]
+      );
+      return; // stop here until confirmation
+    }
+
+    // Otherwise, run normally (for Save)
+    await handleSubmitConfirmed(false);
+  };
+
+  const handleSubmitConfirmed = async (isPost: boolean) => {
     if (!validateForm()) {
       Alert.alert('Validation Error', 'Please check all required fields');
       return;
@@ -503,6 +529,7 @@ export default function StocksSetupScreen() {
           total_amount: item.total_amount,
         })),
         is_post: isPost,
+        status: isPost ? 'Posted' : currentRecord.status || 'Active',
       };
 
       let response;
@@ -522,15 +549,9 @@ export default function StocksSetupScreen() {
         });
       }
 
-      Alert.alert(
-        'Success', 
-        isPost ? 'Stock has been posted successfully!' : 'Stock saved successfully!',
-        [{ text: 'OK', onPress: () => router.push('/(drawer)/stocks/lists') }]
-      );
-
     } catch (error: any) {
       console.error('Error saving stock:', error);
-      
+
       if (error.response?.status === 422) {
         setFormErrors(error.response.data.errors || {});
         setGlobalErrorMessage(error.response.data.message || 'Validation failed');
@@ -549,7 +570,7 @@ export default function StocksSetupScreen() {
 
   const getSelectedStatusName = (statusId: string) => {
     const status = statusOptions.find(s => s.id === statusId);
-    return status ? status.value : 'Select Status';
+    return status ? status.value : 'Select One';
   };
 
   const renderItemRow = ({ item, index }: { item: StockItem; index: number }) => {
@@ -654,14 +675,14 @@ export default function StocksSetupScreen() {
 
         {/* Action */}
         <View style={[styles.cell, styles.cellAction]}>
-  <TouchableOpacity
-    style={styles.deleteButton}
-    onPress={() => deleteItemRow(index)}
-    activeOpacity={0.7}
-  >
-    <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-  </TouchableOpacity>
-</View>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => deleteItemRow(index)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -678,6 +699,26 @@ export default function StocksSetupScreen() {
           </TouchableOpacity>
           <Text style={styles.title}>{isEditMode ? 'Edit Stock' : 'Add Stock'}</Text>
           <View style={{ width: 24 }} />
+        </View>
+
+        {/* Stock Number */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>
+            Stock Number <Text style={styles.required}>*</Text>
+          </Text>
+
+          <TextInput
+            style={[styles.input, formErrors.stock_number && styles.inputError]}
+            value={currentRecord.stock_number}
+            onChangeText={(text) =>
+              setCurrentRecord((prev) => ({ ...prev, stock_number: text }))
+            }
+            editable={!isLoading && currentRecord.status !== 'Posted'}
+          />
+
+          {formErrors.stock_number && (
+            <Text style={styles.errorText}>{formErrors.stock_number[0]}</Text>
+          )}
         </View>
 
         {/* Stock Date */}
@@ -698,17 +739,40 @@ export default function StocksSetupScreen() {
 
         {/* Status */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Status <Text style={styles.required}>*</Text></Text>
-          <TouchableOpacity
-            style={[styles.modalTrigger, formErrors.status && styles.inputError]}
-            onPress={() => setShowStatusPicker(true)}
-            disabled={isLoading}
-          >
-            <Text style={!currentRecord.status ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
-              {getSelectedStatusName(currentRecord.status)}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
-          </TouchableOpacity>
+          <Text style={styles.label}>
+            Status <Text style={styles.required}>*</Text>
+          </Text>
+
+          {currentRecord.status === 'Posted' ? (
+            <View
+              style={[
+                styles.modalTrigger,
+                { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' },
+              ]}
+            >
+              <Text style={[styles.modalTriggerText, { color: '#6b7280' }]}>
+                Posted
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.modalTrigger, formErrors.status && styles.inputError]}
+              onPress={() => setShowStatusPicker(true)}
+              disabled={isLoading}
+            >
+              <Text
+                style={
+                  !currentRecord.status
+                    ? styles.modalTriggerPlaceholder
+                    : styles.modalTriggerText
+                }
+              >
+                {getSelectedStatusName(currentRecord.status)}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          )}
+
           {formErrors.status && (
             <Text style={styles.errorText}>{formErrors.status[0]}</Text>
           )}
@@ -1157,6 +1221,15 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
   inputSmall: {
     backgroundColor: 'white',
     borderWidth: 1,
@@ -1201,15 +1274,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   emptyItems: {
-    padding: 40,
+    padding: 20,
     alignItems: 'center',
     backgroundColor: 'white',
-    width: 700, // Match table width
   },
   emptyItemsText: {
     color: '#666',
-    fontSize: 16,
-    marginTop: 8,
+    fontSize: 14,
   },
   addItemButton: {
     flexDirection: 'row',

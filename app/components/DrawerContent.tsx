@@ -35,13 +35,13 @@ const menuData: MenuItem[] = [
     id: 'invoices',
     title: 'Invoices',
     icon: 'receipt-outline',
-    route: 'invoices/lists',
+    route: 'invoices/invoices/lists',
   },
   {
-    id: 'invoices-returns',
+    id: 'invoice-returns',
     title: 'Returns',
     icon: 'arrow-undo-outline',
-    route: 'invoices/returns',
+    route: 'invoices/returns/lists',
   },
   {
     id: 'customers',

@@ -11,8 +11,8 @@ import {
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import LoadingScreen from '../../components/LoadingScreen';
-import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../../components/LoadingScreen';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function InvoiceViewScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -185,7 +185,7 @@ export default function InvoiceViewScreen() {
           <Text style={styles.errorText}>{error || 'The invoice you are looking for does not exist.'}</Text>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.push('/(drawer)/invoices/lists')}
+            onPress={() => router.push('/(drawer)/invoices/invoices/lists')}
           >
             <Ionicons name="arrow-back" size={20} color="#fff" />
             <Text style={styles.buttonText}>Back to Invoices</Text>
@@ -203,7 +203,7 @@ export default function InvoiceViewScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.push('/(drawer)/invoices/lists')}
+            onPress={() => router.push('/(drawer)/invoices/invoices/lists')}
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={24} color="#374151" />
@@ -212,7 +212,7 @@ export default function InvoiceViewScreen() {
           
           <Text style={styles.title}>Invoice Details</Text>
           
-          <TouchableOpacity onPress={() => router.push(`/(drawer)/invoices/setup?id=${id}`)} style={styles.editButton}>
+          <TouchableOpacity onPress={() => router.push(`/(drawer)/invoices/invoices/setup?id=${id}`)} style={styles.editButton}>
               <Ionicons name="create-outline" size={20} color="#6366F1" />
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>

@@ -64,6 +64,7 @@ export default function BanksScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [statusOptions, setStatusOptions] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<BankForm>({
     account_title: '',
@@ -118,6 +119,35 @@ export default function BanksScreen() {
 
   // ✅ Show global loader until data fetched
   if (loading) return <LoadingScreen />;
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+
+    if (!text.trim()) {
+      setTotalItems(allRecords.length);
+      setTotalPages(Math.ceil(allRecords.length / perPage));
+      updatePageRecords(allRecords, 1, perPage);
+      setPage(1);
+      return;
+    }
+
+    const lowerText = text.toLowerCase();
+
+    const filtered = allRecords.filter((bank) => {
+      const accountTitle = bank.account_title?.toLowerCase() || '';
+      const accountNumber = bank.account_number?.toLowerCase() || '';
+
+      return (
+        accountTitle.includes(lowerText) ||
+        accountNumber.includes(lowerText)
+      );
+    });
+
+    setTotalItems(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / perPage));
+    updatePageRecords(filtered, 1, perPage);
+    setPage(1);
+  };
 
   const fetchStatus = async () => {
     if (!token) return logout();
@@ -325,6 +355,23 @@ export default function BanksScreen() {
         <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* 🔍 Search Field */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search A/C Title, A/C Number..."
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -539,6 +586,22 @@ const styles = StyleSheet.create({
     borderRadius: 8 
   },
   addButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 10,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
+  },
   
   // Table Styles
   tableHeader: { 

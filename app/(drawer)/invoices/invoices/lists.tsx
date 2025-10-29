@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -14,9 +15,9 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import LoadingScreen from '../../components/LoadingScreen';
-import Pagination from '../../components/Pagination';
-import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../../components/LoadingScreen';
+import Pagination from '../../../components/Pagination';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface Invoice {
   id: number;
@@ -49,6 +50,7 @@ export default function InvoicesListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -60,6 +62,35 @@ export default function InvoicesListsScreen() {
   useEffect(() => {
     updatePageRecords(allRecords, page, perPage);
   }, [page, allRecords]);
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+
+    if (!text.trim()) {
+      setTotalItems(allRecords.length);
+      setTotalPages(Math.ceil(allRecords.length / perPage));
+      updatePageRecords(allRecords, 1, perPage);
+      setPage(1);
+      return;
+    }
+
+    const lowerText = text.toLowerCase();
+
+    const filtered = allRecords.filter((invoice) => {
+      const invoiceNumber = invoice.invoice_number?.toLowerCase() || '';
+      const invoiceName = invoice.customer_name?.toLowerCase() || '';
+
+      return (
+        invoiceNumber.includes(lowerText) ||
+        invoiceName.includes(lowerText)
+      );
+    });
+
+    setTotalItems(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / perPage));
+    updatePageRecords(filtered, 1, perPage);
+    setPage(1);
+  };
 
   const fetchSettings = async () => {
     if (!token) return;
@@ -170,7 +201,7 @@ export default function InvoicesListsScreen() {
   // Column definitions
   const COLUMN_WIDTHS = {
     id: 50,
-    invoice_number: 100,
+    invoice_number: 150,
     customer_name: 150,
     invoice_date: 120,
     total_quantity: 80,
@@ -184,7 +215,7 @@ export default function InvoicesListsScreen() {
 
   const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
     id: 'ID',
-    invoice_number: 'Invoice#',
+    invoice_number: 'Invoice Number',
     customer_name: 'Customer Name',
     invoice_date: 'Invoice Date',
     total_quantity: 'Quantity',
@@ -258,7 +289,7 @@ export default function InvoicesListsScreen() {
         <View style={styles.actionButtons}>
           {/* View Button */}
           <TouchableOpacity
-            onPress={() => router.push(`/(drawer)/invoices/view?id=${item.id}`)}
+            onPress={() => router.push(`/(drawer)/invoices/invoices/view?id=${item.id}`)}
             style={[styles.actionButton, styles.viewButton]}
           >
             <Ionicons name="eye-outline" size={18} color="#28A745" />
@@ -266,7 +297,7 @@ export default function InvoicesListsScreen() {
 
           {/* Edit Button */}
           <TouchableOpacity
-            onPress={() => router.push(`/(drawer)/invoices/setup?id=${item.id}`)}
+            onPress={() => router.push(`/(drawer)/invoices/invoices/setup?id=${item.id}`)}
             style={[styles.actionButton, styles.editButton]}
           >
             <Ionicons name="create-outline" size={18} color="#007AFF" />
@@ -291,10 +322,27 @@ export default function InvoicesListsScreen() {
 
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push('/(drawer)/invoices/setup')}
+          onPress={() => router.push('/(drawer)/invoices/invoices/setup')}
         >
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* 🔍 Search Field */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search invoice, customer name..."
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -368,6 +416,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '500',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 10,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
   },
   tableHeader: {
     flexDirection: 'row',

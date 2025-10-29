@@ -58,6 +58,7 @@ export default function BrandsScreen() {
   const [editName, setEditName] = useState('');
   const [editStatus, setEditStatus] = useState('Active');
   const [editImage, setEditImage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
 
@@ -69,6 +70,19 @@ export default function BrandsScreen() {
   useEffect(() => {
     updatePageRecords(allRecords, page, perPage);
   }, [page, perPage, allRecords]);
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+
+    const filtered = allRecords.filter((brand) =>
+      brand.name.toLowerCase().includes(text.toLowerCase())
+    );
+
+    setTotalItems(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / perPage));
+    updatePageRecords(filtered, 1, perPage);
+    setPage(1);
+  };
 
   const fetchStatus = async () => {
     if (!token) return logout();
@@ -352,6 +366,23 @@ export default function BrandsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* 🔍 Search Field */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search brand..."
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {error ? (
@@ -520,6 +551,22 @@ const styles = StyleSheet.create({
     borderRadius: 8 
   },
   addButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 10,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
+  },
   
   // Table Styles
   tableHeader: { 

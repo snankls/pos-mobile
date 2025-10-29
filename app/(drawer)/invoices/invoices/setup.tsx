@@ -17,8 +17,8 @@ import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import LoadingScreen from '../../components/LoadingScreen';
-import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../../components/LoadingScreen';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface Customer {
   id: string;
@@ -38,6 +38,15 @@ interface Product {
   price?: string;
 }
 
+interface Invoice {
+  id?: string;
+  customer_id: string;
+  invoice_date: string;
+  status: string;
+  description: string;
+  items: InvoiceItem[];
+}
+
 interface InvoiceItem {
   id?: string;
   product_id: string;
@@ -51,17 +60,9 @@ interface InvoiceItem {
   total_amount: string;
 }
 
-interface Invoice {
-  id?: string;
-  customer_id: string;
-  invoice_date: string;
-  status: string;
-  description: string;
-  items: InvoiceItem[];
-}
-
 export default function InvoicesSetupScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
   const { token } = useAuth();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -148,7 +149,7 @@ export default function InvoicesSetupScreen() {
       await Promise.all([fetchCustomers(), fetchProducts()]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
-      Alert.alert('Error', 'Failed to load data');
+      console.log('Error', 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -638,7 +639,7 @@ export default function InvoicesSetupScreen() {
         total_discount: totalDiscount.toFixed(2),
         grand_total: grandTotal.toFixed(2),
         items: itemsList.map(item => ({
-          id: item.id, // Include item ID for updates
+          id: item.id,
           product_id: item.product_id,
           quantity: item.quantity,
           unit_id: item.unit_id,
@@ -669,7 +670,7 @@ export default function InvoicesSetupScreen() {
       }
 
       // Success - redirect to list
-      router.push('/(drawer)/invoices/lists');
+      router.push('/(drawer)/invoices/invoices/lists');
       if (!isEditMode) {
         resetForm();
       }
@@ -709,7 +710,7 @@ export default function InvoicesSetupScreen() {
 
   const getSelectedCustomerName = (customerId: string) => {
     const customer = customers.find(c => c.id.toString() === customerId.toString());
-    return customer ? `${customer.name} (${customer.code})` : 'Select Customer';
+    return customer ? `${customer.name} (${customer.code})` : 'Select One';
   };
 
   const getSelectedStatusName = (statusKey: string) => {
@@ -1005,7 +1006,7 @@ export default function InvoicesSetupScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push('/(drawer)/invoices/lists')} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(drawer)/invoices/invoices/lists')} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#007AFF" />
           </TouchableOpacity>
           <Text style={styles.title}>{isEditMode ? 'Edit Invoice' : 'Add Invoice'}</Text>

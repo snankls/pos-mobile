@@ -47,13 +47,13 @@ export default function DrawerLayout() {
           />
           <Drawer.Screen name="invoices" options={{ drawerLabel: "Invoices" }} />
           <Drawer.Screen name="invoices/add" options={{ drawerLabel: "Add Invoice" }} />
-          <Drawer.Screen name="invoices/returns" options={{ drawerLabel: "Invoice Returns" }} />
+          <Drawer.Screen name="invoice/returns" options={{ drawerLabel: "Invoice Returns" }} />
           <Drawer.Screen name="products" options={{ drawerLabel: "Products" }} />
           <Drawer.Screen name="products/add" options={{ drawerLabel: "Add Product" }} />
           <Drawer.Screen name="products/categories" options={{ drawerLabel: "Categories" }} />
           <Drawer.Screen name="products/brands" options={{ drawerLabel: "Brands" }} />
           <Drawer.Screen name="products/units" options={{ drawerLabel: "Units" }} />
-          <Drawer.Screen name="products/stocks" options={{ drawerLabel: "Stocks" }} />
+          <Drawer.Screen name="stocks" options={{ drawerLabel: "Stocks" }} />
           <Drawer.Screen name="customers" options={{ drawerLabel: "Customers" }} />
           <Drawer.Screen name="banks" options={{ drawerLabel: "Banks" }} />
           <Drawer.Screen name="cities" options={{ drawerLabel: "Cities" }} />

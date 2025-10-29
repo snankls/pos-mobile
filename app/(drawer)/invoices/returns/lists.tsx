@@ -8,7 +8,6 @@ import {
   StyleSheet,
   RefreshControl,
   StatusBar,
-  Image,
   Alert,
   ScrollView,
 } from 'react-native';
@@ -16,37 +15,35 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import LoadingScreen from '../../components/LoadingScreen';
-import Pagination from '../../components/Pagination';
-import { useAuth } from '../../contexts/AuthContext';
+import LoadingScreen from '../../../components/LoadingScreen';
+import Pagination from '../../../components/Pagination';
+import { useAuth } from '../../../contexts/AuthContext';
 
-interface Product {
+interface IReturn {
   id: number;
-  image?: string;
-  sku?: string;
-  name: string;
-  brand_name: string;
-  category_name: string;
-  unit_name: string;
-  cost_price?: string;
-  sale_price?: string;
-  stocks?: string;
-  image_url?: string;
+  invoice_number?: string;
+  customer_name?: string;
+  invoice_date?: string;
+  total_quantity: string;
+  total_price: string;
+  discount_value: string;
+  total_discount: string;
+  grand_total?: string;
   status: string;
   created_by?: string;
   created_at?: string;
 }
 
-export default function ProductsListsScreen() {
+export default function ReturnsListsScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
   const router = useRouter();
   const { token, logout } = useAuth();
 
   const perPage = 20;
-  const [allRecords, setAllRecords] = useState<Product[]>([]);
-  const [records, setRecords] = useState<Product[]>([]);
+  const [allRecords, setAllRecords] = useState<IReturn[]>([]);
+  const [records, setRecords] = useState<IReturn[]>([]);
+  const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -58,6 +55,7 @@ export default function ProductsListsScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchRecords();
+      fetchSettings();
     }, [token])
   );
 
@@ -68,30 +66,38 @@ export default function ProductsListsScreen() {
   const handleSearch = (text: string) => {
     setSearchQuery(text);
 
-    if (!text.trim()) {
-      setTotalItems(allRecords.length);
-      setTotalPages(Math.ceil(allRecords.length / perPage));
-      updatePageRecords(allRecords, 1, perPage);
-      setPage(1);
-      return;
-    }
-
-    const lowerText = text.toLowerCase();
-
-    const filtered = allRecords.filter((product) => {
-      const productSKU = product.sku?.toLowerCase() || '';
-      const productName = product.name?.toLowerCase() || '';
-
-      return (
-        productSKU.includes(lowerText) ||
-        productName.includes(lowerText)
-      );
-    });
+    const filtered = allRecords.filter((ireturn) =>
+      ireturn.invoice_number?.toLowerCase().includes(text.toLowerCase())
+    );
 
     setTotalItems(filtered.length);
     setTotalPages(Math.ceil(filtered.length / perPage));
     updatePageRecords(filtered, 1, perPage);
     setPage(1);
+  };
+
+  const fetchSettings = async () => {
+    if (!token) return;
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchRecords = async () => {
@@ -100,7 +106,7 @@ export default function ProductsListsScreen() {
     try {
       setLoading(true);
       setError('');
-      const res = await axios.get(`${API_URL}/products`, {
+      const res = await axios.get(`${API_URL}/invoice/returns`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -127,7 +133,7 @@ export default function ProductsListsScreen() {
   // ✅ Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
-  const updatePageRecords = (all: Product[], currentPage: number, perPageCount: number) => {
+  const updatePageRecords = (all: IReturn[], currentPage: number, perPageCount: number) => {
     const startIndex = (currentPage - 1) * perPageCount;
     const endIndex = startIndex + perPageCount;
     setRecords(all.slice(startIndex, endIndex));
@@ -138,10 +144,10 @@ export default function ProductsListsScreen() {
     fetchRecords();
   };
 
-  const handleDelete = async (product: Product) => {
+  const handleDelete = async (iReturn: IReturn) => {
     Alert.alert(
-      'Delete Product',
-      `Are you sure you want to delete "${product.name}"?`,
+      'Delete IReturn',
+      `Are you sure you want to delete "${iReturn.invoice_number}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -149,7 +155,7 @@ export default function ProductsListsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${API_URL}/products/${product.id}`, {
+              await axios.delete(`${API_URL}/invoices/${iReturn.id}`, {
                 headers: { Authorization: `Bearer ${token}` },
               });
               fetchRecords();
@@ -179,15 +185,13 @@ export default function ProductsListsScreen() {
   // Column definitions
   const COLUMN_WIDTHS = {
     id: 50,
-    image: 70,
-    sku: 100,
-    product_name: 180,
-    brand_id: 100,
-    category_id: 100,
-    unit_id: 100,
-    cost_price: 180,
-    sale_price: 120,
-    stock: 120,
+    invoice_number: 150,
+    customer_name: 150,
+    invoice_date: 120,
+    total_quantity: 80,
+    total_price: 100,
+    total_discount: 100,
+    grand_total: 120,
     status: 80,
     created_by: 120,
     actions: 150,
@@ -195,15 +199,13 @@ export default function ProductsListsScreen() {
 
   const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
     id: 'ID',
-    image: 'Image',
-    sku: 'SKU',
-    product_name: 'Product Name',
-    brand_id: 'Brand',
-    category_id: 'Category',
-    unit_id: 'Units',
-    cost_price: 'Cost Price',
-    sale_price: 'Sale Price',
-    stock: 'Stocks',
+    invoice_number: 'Invoice Number',
+    customer_name: 'Customer Name',
+    invoice_date: 'Invoice Date',
+    total_quantity: 'Quantity',
+    total_price: 'Price',
+    total_discount: 'Discount',
+    grand_total: 'Grand Total',
     status: 'Status',
     created_by: 'Created By',
     actions: 'Actions',
@@ -219,54 +221,38 @@ export default function ProductsListsScreen() {
     </View>
   );
 
-  const TableRow = ({ item }: { item: Product }) => (
+  const TableRow = ({ item }: { item: IReturn }) => (
     <View style={styles.tableRow}>
       <View style={{ width: COLUMN_WIDTHS.id }}>
         <Text style={styles.cellText}>{item.id}</Text>
       </View>
-
-      <View style={{ width: COLUMN_WIDTHS.image }}>
-        <Image
-          source={
-            item.image_url
-              ? { uri: `${IMAGE_URL}/products/${item.image_url}` }
-              : require('../../../assets/images/placeholder.jpg')
-          }
-          style={{ width: 50, height: 50 }}
-          resizeMode="cover"
-        />
+      
+      <View style={{ width: COLUMN_WIDTHS.invoice_number }}>
+        <Text style={styles.cellText}>{item.invoice_number}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.sku }}>
-        <Text style={styles.cellText}>{item.sku}</Text>
+      <View style={{ width: COLUMN_WIDTHS.customer_name }}>
+        <Text style={styles.cellText}>{item.customer_name}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.product_name }}>
-        <Text style={styles.cellText}>{item.name}</Text>
+      <View style={{ width: COLUMN_WIDTHS.invoice_date }}>
+        <Text style={styles.cellText}>{item.invoice_date ? item.invoice_date.split('T')[0] : ''}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.brand_id }}>
-        <Text style={styles.cellText}>{item.brand_name}</Text>
+      <View style={{ width: COLUMN_WIDTHS.total_quantity }}>
+        <Text style={styles.cellText}>{item.total_quantity}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.category_id }}>
-        <Text style={styles.cellText}>{item.category_name}</Text>
+      <View style={{ width: COLUMN_WIDTHS.total_price }}>
+        <Text style={styles.cellText}>{settings.currency}{item.total_price}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.unit_id }}>
-        <Text style={styles.cellText}>{item.unit_name}</Text>
+      <View style={{ width: COLUMN_WIDTHS.total_discount }}>
+        <Text style={styles.cellText}>{settings.currency}{item.total_discount}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.cost_price }}>
-        <Text style={styles.cellText}>{item.cost_price}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.sale_price }}>
-        <Text style={styles.cellText}>{item.sale_price || '-'}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.stock }}>
-        <Text style={styles.cellText}>{item.stocks || '-'}</Text>
+      <View style={{ width: COLUMN_WIDTHS.grand_total }}>
+        <Text style={styles.cellText}>{settings.currency}{item.grand_total || '-'}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.status }}>
@@ -287,7 +273,7 @@ export default function ProductsListsScreen() {
         <View style={styles.actionButtons}>
           {/* View Button */}
           <TouchableOpacity
-            onPress={() => router.push(`/(drawer)/products/view?id=${item.id}`)}
+            onPress={() => router.push(`/(drawer)/invoices/returns/view?id=${item.id}`)}
             style={[styles.actionButton, styles.viewButton]}
           >
             <Ionicons name="eye-outline" size={18} color="#28A745" />
@@ -295,7 +281,7 @@ export default function ProductsListsScreen() {
 
           {/* Edit Button */}
           <TouchableOpacity
-            onPress={() => router.push(`/(drawer)/products/setup?id=${item.id}`)}
+            onPress={() => router.push(`/(drawer)/invoices/returns/setup?id=${item.id}`)}
             style={[styles.actionButton, styles.editButton]}
           >
             <Ionicons name="create-outline" size={18} color="#007AFF" />
@@ -316,11 +302,11 @@ export default function ProductsListsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Products</Text>
+        <Text style={styles.title}>Invoice Returns</Text>
 
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push('/(drawer)/products/setup')}
+          onPress={() => router.push('/(drawer)/invoices/returns/setup')}
         >
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
@@ -331,7 +317,7 @@ export default function ProductsListsScreen() {
         <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search sku, product name..."
+          placeholder="Search invoice number..."
           placeholderTextColor="#9CA3AF"
           value={searchQuery}
           onChangeText={handleSearch}
@@ -470,7 +456,7 @@ const styles = StyleSheet.create({
   },
   editButton: { backgroundColor: '#E8F2FF' },
   deleteButton: { backgroundColor: '#FFEAEA' },
-
+  
   noDataContainer: {
     padding: 22,
   },
@@ -479,7 +465,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'left',
   },
-
+  
   pagination: { marginTop: 15, marginBottom: 30, alignItems: 'center', justifyContent: 'center' },
   paginationText: { fontSize: 12, color: '#555', marginBottom: 5 },
   paginationControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },

@@ -2,19 +2,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   StatusBar,
-  Image,
   Alert,
   ScrollView,
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingScreen from '../../components/LoadingScreen';
@@ -22,22 +21,18 @@ import Pagination from '../../components/Pagination';
 
 interface Stock {
   id: number;
-  image?: string;
-  sku?: string;
-  name: string;
-  brand_name: string;
-  category_name: string;
-  unit_name: string;
-  cost_price?: string;
-  sale_price?: string;
-  stocks?: string;
-  image_url?: string;
+  stock_number?: string;
+  stock_date: string;
+  total_stock: string;
+  total_price: string;
   status: string;
   created_by?: string;
   created_at?: string;
 }
 
 export default function StocksListsScreen() {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
   const router = useRouter();
   const { token, logout } = useAuth();
 
@@ -50,9 +45,7 @@ export default function StocksListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
+  const [searchQuery, setSearchQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -63,6 +56,19 @@ export default function StocksListsScreen() {
   useEffect(() => {
     updatePageRecords(allRecords, page, perPage);
   }, [page, allRecords]);
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+
+    const filtered = allRecords.filter((stock) =>
+      (stock.stock_number?.toLowerCase() || '').includes(text.toLowerCase())
+    );
+
+    setTotalItems(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / perPage));
+    updatePageRecords(filtered, 1, perPage);
+    setPage(1);
+  };
 
   const fetchRecords = async () => {
     if (!token) return logout();
@@ -111,7 +117,7 @@ export default function StocksListsScreen() {
   const handleDelete = async (stock: Stock) => {
     Alert.alert(
       'Delete Stock',
-      `Are you sure you want to delete "${stock.name}"?`,
+      `Are you sure you want to delete "${stock.stock_number}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -140,7 +146,7 @@ export default function StocksListsScreen() {
       case 'inactive':
         return '#ff3366';
       default:
-        return '#8E8E93';
+        return '#6571ff';
     }
   };
 
@@ -149,15 +155,10 @@ export default function StocksListsScreen() {
   // Column definitions
   const COLUMN_WIDTHS = {
     id: 50,
-    image: 70,
-    sku: 100,
-    stock_name: 180,
-    brand_id: 100,
-    category_id: 100,
-    unit_id: 100,
-    cost_price: 180,
-    sale_price: 120,
-    stock: 120,
+    stock_number: 120,
+    stock_date: 100,
+    total_stock: 100,
+    total_price: 100,
     status: 80,
     created_by: 100,
     actions: 150,
@@ -165,15 +166,10 @@ export default function StocksListsScreen() {
 
   const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
     id: 'ID',
-    image: 'Image',
-    sku: 'SKU',
-    stock_name: 'Stock Name',
-    brand_id: 'Brand',
-    category_id: 'Category',
-    unit_id: 'Units',
-    cost_price: 'Cost Price',
-    sale_price: 'Sale Price',
-    stock: 'Stocks',
+    stock_number: 'Stock Number',
+    stock_date: 'Stock Date',
+    total_stock: 'Total Stock',
+    total_price: 'Total Price',
     status: 'Status',
     created_by: 'Created By',
     actions: 'Actions',
@@ -195,48 +191,20 @@ export default function StocksListsScreen() {
         <Text style={styles.cellText}>{item.id}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.image }}>
-        <Image
-          source={
-            item.image_url
-              ? { uri: `${IMAGE_URL}/stocks/${item.image_url}` }
-              : require('../../../assets/images/placeholder.jpg')
-          }
-          style={{ width: 50, height: 50 }}
-          resizeMode="cover"
-        />
+      <View style={{ width: COLUMN_WIDTHS.stock_number }}>
+        <Text style={styles.cellText}>{item.stock_number}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.sku }}>
-        <Text style={styles.cellText}>{item.sku}</Text>
+      <View style={{ width: COLUMN_WIDTHS.stock_date }}>
+        <Text style={styles.cellText}>{item.stock_date}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.stock_name }}>
-        <Text style={styles.cellText}>{item.name}</Text>
+      <View style={{ width: COLUMN_WIDTHS.total_stock }}>
+        <Text style={styles.cellText}>{item.total_stock}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.brand_id }}>
-        <Text style={styles.cellText}>{item.brand_name}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.category_id }}>
-        <Text style={styles.cellText}>{item.category_name}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.unit_id }}>
-        <Text style={styles.cellText}>{item.unit_name}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.cost_price }}>
-        <Text style={styles.cellText}>{item.cost_price}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.sale_price }}>
-        <Text style={styles.cellText}>{item.sale_price || '-'}</Text>
-      </View>
-
-      <View style={{ width: COLUMN_WIDTHS.stock }}>
-        <Text style={styles.cellText}>{item.stocks || '-'}</Text>
+      <View style={{ width: COLUMN_WIDTHS.total_price }}>
+        <Text style={styles.cellText}>{item.total_price}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.status }}>
@@ -287,13 +255,29 @@ export default function StocksListsScreen() {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Stocks</Text>
-
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/(drawer)/stocks/setup')}
         >
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* 🔍 Search Field */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search stock number..."
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -368,13 +352,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 10,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
+  },
   tableHeader: {
     flexDirection: 'row',
     padding: 10,
     backgroundColor: '#f0f0f0',
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    minWidth: 900,
+    minWidth: 800,
   },
   tableRow: {
     flexDirection: 'row',
@@ -382,7 +381,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     alignItems: 'center',
-    minWidth: 900,
+    minWidth: 800,
   },
   headerText: { fontWeight: 'bold', fontSize: 14, color: '#333' },
   cellText: { fontSize: 14, color: '#333' },
