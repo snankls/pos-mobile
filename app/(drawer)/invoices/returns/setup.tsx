@@ -53,6 +53,7 @@ interface InvoiceItem {
   id?: string;
   product_id: string;
   product_name?: string;
+  product_sku?: string;
   quantity: string;
   unit_id: string;
   unit_name: string;
@@ -100,7 +101,6 @@ export default function ReturnsSetupScreen() {
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [showInvoicePicker, setShowInvoicePicker] = useState(false);
   const [showProductPickers, setShowProductPickers] = useState<boolean[]>([]);
-  const [showDiscountTypePickers, setShowDiscountTypePickers] = useState<boolean[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -128,7 +128,6 @@ export default function ReturnsSetupScreen() {
     setItemsList([]);
     setOriginalInvoiceItems([]);
     setShowProductPickers([]);
-    setShowDiscountTypePickers([]);
     setFormErrors({});
     setGlobalErrorMessage('');
     setIsEditMode(false);
@@ -319,17 +318,27 @@ export default function ReturnsSetupScreen() {
         id: item.id?.toString() || '',
         product_id: item.product_id?.toString() || '',
         product_name: item.product_name || '',
-        quantity: item.quantity ? item.quantity.toString() : '0',
+        product_sku: item.product_sku || '',
+        quantity: '0', // Start with 0 for return quantity
         unit_id: item.unit_id?.toString() || '',
         unit_name: item.unit_name || '',
-        discountType: item.discount_type || 'Percentage',
+        discountType: item.discount_type || 'Percentage', // Get discount type from invoice
         discountValue: item.discount_value ? item.discount_value.toString() : '0',
         price: item.sale_price ? item.sale_price.toString() : '0',
-        total_amount: item.total ? item.total.toString() : '0',
-        max_return_quantity: item.quantity ? item.quantity.toString() : '0' // Initially set to original quantity
+        total_amount: '0', // Start with 0
+        max_return_quantity: item.quantity ? item.quantity.toString() : '0' // Maximum that can be returned
       }));
 
+      console.log('Transformed items for originalInvoiceItems:', transformedItems);
+
       setOriginalInvoiceItems(transformedItems);
+      
+      // Automatically add all products to itemsList for return
+      setItemsList(transformedItems);
+      
+      // Initialize pickers arrays
+      const pickersArray = new Array(transformedItems.length).fill(false);
+      setShowProductPickers(pickersArray);
       
       // Fetch available products for this invoice (products that can be returned)
       await fetchAvailableProducts(invoiceId);
@@ -347,6 +356,9 @@ export default function ReturnsSetupScreen() {
     }
   };
 
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
+
   // Fetch available products for returns (products from the selected invoice)
   const fetchAvailableProducts = async (invoiceId: string) => {
     try {
@@ -359,13 +371,21 @@ export default function ReturnsSetupScreen() {
         }
       });
 
-      const productsData = response.data;
+      const invoiceData = response.data;
       
-      const transformedProducts = productsData.map((product: Product) => ({
-        ...product,
-        id: product.id.toString(),
-        product_label: `${product.name} (${product.sku}) - ${settings.currency || '$'} ${product.sale_price}`,
-        price: product.sale_price
+      // Extract products from the details array
+      const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
+      
+      const transformedProducts = itemsData.map((item: any) => ({
+        id: item.product_id?.toString() || '',
+        name: item.product_name || 'Unknown Product',
+        sku: item.product_sku || 'N/A',
+        sale_price: item.sale_price || '0',
+        unit_id: item.unit_id?.toString() || '',
+        unit_name: item.unit_name || '',
+        quantity: item.quantity || '0', // This is the available quantity for return
+        price: item.sale_price || '0',
+        product_label: `${item.product_name || 'Unknown Product'} (${item.product_sku || 'N/A'}) - ${settings.currency || '$'} ${item.sale_price || '0'}`
       }));
       
       setProducts(transformedProducts);
@@ -373,7 +393,7 @@ export default function ReturnsSetupScreen() {
 
     } catch (error: any) {
       console.error('Error fetching available products:', error);
-      // If specific endpoint doesn't exist, use original invoice items as products
+      // Fallback to using original invoice items
       const productsFromItems = originalInvoiceItems.map(item => ({
         id: item.product_id,
         name: item.product_name || 'Unknown Product',
@@ -381,7 +401,9 @@ export default function ReturnsSetupScreen() {
         sale_price: item.price,
         unit_id: item.unit_id,
         unit_name: item.unit_name,
-        quantity: item.max_return_quantity || '0'
+        quantity: item.max_return_quantity || '0',
+        price: item.price,
+        product_label: `${item.product_name || 'Unknown Product'} (N/A) - ${settings.currency || '$'} ${item.price}`
       }));
       
       setProducts(productsFromItems);
@@ -397,7 +419,7 @@ export default function ReturnsSetupScreen() {
         return;
       }
 
-      const response = await axios.get(`${API_URL}/invoice-returns/${returnId}`, {
+      const response = await axios.get(`${API_URL}/invoice/returns/${returnId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -438,7 +460,6 @@ export default function ReturnsSetupScreen() {
       // Initialize pickers arrays
       const pickersArray = new Array(transformedItems.length).fill(false);
       setShowProductPickers(pickersArray);
-      setShowDiscountTypePickers(pickersArray);
 
       // Fetch invoice numbers for dropdown
       await fetchInvoiceNumbers();
@@ -536,8 +557,8 @@ export default function ReturnsSetupScreen() {
         unit_id: selectedProduct.unit_id,
         unit_name: selectedProduct.unit_name,
         quantity: updatedItems[index].quantity || '0',
-        discountType: updatedItems[index].discountType || 'Percentage',
-        discountValue: updatedItems[index].discountValue || '0',
+        discountType: originalItem?.discountType || 'Percentage', // Use original discount type
+        discountValue: originalItem?.discountValue || '0',
         total_amount: '0',
         max_return_quantity: originalItem?.quantity || selectedProduct.quantity || '0'
       };
@@ -572,22 +593,28 @@ export default function ReturnsSetupScreen() {
       return;
     }
 
+    // Check if there are any available products not already in itemsList
+    const availableProducts = getAvailableProducts(itemsList.length);
+    if (availableProducts.length === 0) {
+      Alert.alert('Info', 'All products from this invoice are already added for return');
+      return;
+    }
+
     const newItem: InvoiceItem = {
       product_id: '',
       quantity: '0',
       unit_id: '',
       unit_name: '',
-      discountType: 'Percentage',
+      discountType: '',
       discountValue: '0',
       price: '0',
       total_amount: '0'
     };
     setItemsList(prev => [...prev, newItem]);
     setShowProductPickers(prev => [...prev, false]);
-    setShowDiscountTypePickers(prev => [...prev, false]);
   };
 
-  // Delete item row
+  // Update the deleteItemRow function
   const deleteItemRow = (index: number) => {
     const itemToDelete = itemsList[index];
     
@@ -603,7 +630,7 @@ export default function ReturnsSetupScreen() {
             try {
               // If the item has an ID (existing item from API), delete from server
               if (itemToDelete.id && isEditMode) {
-                const response = await axios.delete(`${API_URL}/invoice-returns/items/${itemToDelete.id}`, {
+                const response = await axios.delete(`${API_URL}/invoice/returns/items/${itemToDelete.id}`, {
                   headers: { 
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -616,8 +643,6 @@ export default function ReturnsSetupScreen() {
                   setItemsList(updatedItems);
                   const updatedPickers = showProductPickers.filter((_, i) => i !== index);
                   setShowProductPickers(updatedPickers);
-                  const updatedDiscountPickers = showDiscountTypePickers.filter((_, i) => i !== index);
-                  setShowDiscountTypePickers(updatedDiscountPickers);
                 }
               } else {
                 // If it's a new item (no ID), just remove from local state
@@ -625,8 +650,6 @@ export default function ReturnsSetupScreen() {
                 setItemsList(updatedItems);
                 const updatedPickers = showProductPickers.filter((_, i) => i !== index);
                 setShowProductPickers(updatedPickers);
-                const updatedDiscountPickers = showDiscountTypePickers.filter((_, i) => i !== index);
-                setShowDiscountTypePickers(updatedDiscountPickers);
               }
             } catch (error: any) {
               console.error('Error deleting item:', error);
@@ -657,9 +680,13 @@ export default function ReturnsSetupScreen() {
       const discountValue = parseFloat(item.discountValue) || 0;
       
       let discountAmount = 0;
+      
+      // Calculate discount based on discount type
       if (item.discountType === 'Percentage') {
+        // For percentage, calculate discount based on current return quantity
         discountAmount = (price * quantity * discountValue) / 100;
       } else {
+        // For fixed discount, use the discount value as is
         discountAmount = discountValue;
       }
       
@@ -751,7 +778,7 @@ export default function ReturnsSetupScreen() {
       let response;
       if (isEditMode && currentRecord.id) {
         // Update existing return
-        response = await axios.put(`${API_URL}/invoice-returns/${currentRecord.id}`, formData, {
+        response = await axios.put(`${API_URL}/invoice/returns/${currentRecord.id}`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -759,7 +786,7 @@ export default function ReturnsSetupScreen() {
         });
       } else {
         // Create new return
-        response = await axios.post(`${API_URL}/invoice-returns`, formData, {
+        response = await axios.post(`${API_URL}/invoice/returns`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -988,24 +1015,9 @@ export default function ReturnsSetupScreen() {
           </Text>
         </View>
 
-        {/* Discount */}
+        {/* Discount - Show discount info */}
         <View style={[styles.cell, styles.cellDiscount]}>
           <View style={styles.discountContainer}>
-            <TouchableOpacity
-              style={styles.modalTrigger}
-              onPress={() => {
-                const newPickers = [...showDiscountTypePickers];
-                newPickers[index] = true;
-                setShowDiscountTypePickers(newPickers);
-              }}
-              disabled={!item.product_id || isLoading}
-            >
-              <Text style={styles.modalTriggerText}>
-                {item.discountType === 'Percentage' ? '%' : settings.currency}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#6B7280" />
-            </TouchableOpacity>
-
             <TextInput
               style={[styles.inputSmall, styles.discountInput]}
               value={item.discountValue}
@@ -1019,68 +1031,10 @@ export default function ReturnsSetupScreen() {
               editable={!!item.product_id && !isLoading}
               placeholder="0"
             />
-
-            {/* Discount Type Selection Modal */}
-            <Modal
-              visible={showDiscountTypePickers[index] || false}
-              transparent
-              animationType="slide"
-              onRequestClose={() => {
-                const newPickers = [...showDiscountTypePickers];
-                newPickers[index] = false;
-                setShowDiscountTypePickers(newPickers);
-              }}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Select Discount Type</Text>
-                    <TouchableOpacity 
-                      onPress={() => {
-                        const newPickers = [...showDiscountTypePickers];
-                        newPickers[index] = false;
-                        setShowDiscountTypePickers(newPickers);
-                      }}
-                      style={styles.closeButton}
-                    >
-                      <Ionicons name="close" size={24} color="#333" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <FlatList
-                    data={[
-                      { id: 'Percentage', name: 'Percentage (%)' },
-                      { id: 'Fixed', name: `Fixed (${settings.currency})` }
-                    ]}
-                    keyExtractor={(type) => type.id}
-                    renderItem={({ item: type }) => (
-                      <TouchableOpacity
-                        style={[
-                          styles.modalItem,
-                          item.discountType === type.id && styles.selectedModalItem
-                        ]}
-                        onPress={() => {
-                          const updatedItems = [...itemsList];
-                          updatedItems[index].discountType = type.id;
-                          setItemsList(updatedItems);
-                          const newPickers = [...showDiscountTypePickers];
-                          newPickers[index] = false;
-                          setShowDiscountTypePickers(newPickers);
-                          updateRowTotal(index);
-                        }}
-                      >
-                        <Text style={styles.modalItemText}>{type.name}</Text>
-                        {item.discountType === type.id && (
-                          <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    contentContainerStyle={styles.modalListContent}
-                  />
-                </View>
-              </View>
-            </Modal>
           </View>
+          <Text style={styles.discountTypeText}>
+            {item.discountType === 'Percentage' ? '%' : settings.currency}
+          </Text>
         </View>
 
         {/* Price */}
@@ -1110,9 +1064,6 @@ export default function ReturnsSetupScreen() {
       </View>
     );
   };
-
-  // ✅ Show global loader until data fetched
-  if (loading) return <LoadingScreen />;
 
   return (
     <KeyboardAvoidingView 
@@ -1196,13 +1147,6 @@ export default function ReturnsSetupScreen() {
           
           {formErrors.items && (
             <Text style={styles.errorText}>{formErrors.items[0]}</Text>
-          )}
-          
-          {!currentRecord.invoice_number && (
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
-              <Text style={styles.infoText}>Please select an invoice first to add return items</Text>
-            </View>
           )}
           
           {/* Horizontal Scroll Container */}
@@ -1493,7 +1437,6 @@ const styles = StyleSheet.create({
   },
   modalTriggerPlaceholder: {
     fontSize: 16,
-    color: '#9ca3af',
     flex: 1,
   },
   readOnlyField: {
@@ -1551,30 +1494,32 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     minWidth: 800,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    overflow: 'hidden',
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f3f4f6',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#d1d5db',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
   },
   headerCell: {
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRightWidth: 1,
     borderColor: '#d1d5db',
+    justifyContent: 'center',
   },
   headerCellNumber: { width: 40 },
   headerCellProduct: { width: 250 },
   headerCellQty: { width: 80 },
   headerCellUnit: { width: 80 },
   headerCellDiscount: { width: 120 },
-  headerCellPrice: { width: 100 },
-  headerCellTotal: { width: 100 },
+  headerCellPrice: { width: 150 },
+  headerCellTotal: { width: 150 },
   headerCellAction: { width: 60 },
   headerText: {
     fontSize: 14,
@@ -1585,16 +1530,17 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#d1d5db',
+    borderBottomColor: '#f3f4f6',
     backgroundColor: 'white',
+  },
+  itemRowLast: {
+    borderBottomWidth: 0,
   },
   cell: {
     paddingVertical: 8,
     paddingHorizontal: 8,
     borderRightWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#f3f4f6',
     justifyContent: 'center',
   },
   cellNumber: { width: 40 },
@@ -1602,8 +1548,8 @@ const styles = StyleSheet.create({
   cellQty: { width: 80 },
   cellUnit: { width: 80 },
   cellDiscount: { width: 120 },
-  cellPrice: { width: 100 },
-  cellTotal: { width: 100 },
+  cellPrice: { width: 150 },
+  cellTotal: { width: 150 },
   cellAction: { width: 60 },
   rowNumberText: {
     textAlign: 'center',
@@ -1613,12 +1559,13 @@ const styles = StyleSheet.create({
   inputSmall: {
     backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 4,
+    borderColor: '#e5e7eb',
+    borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 6,
     fontSize: 14,
     textAlign: 'center',
+    minHeight: 36,
   },
   discountContainer: {
     flexDirection: 'row',
@@ -1628,22 +1575,31 @@ const styles = StyleSheet.create({
   discountInput: {
     flex: 1,
   },
+  discountTypeText: {
+    fontSize: 10,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   unitText: {
     fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
+    paddingVertical: 6,
   },
   priceText: {
     fontSize: 14,
     color: '#1f2937',
     textAlign: 'center',
     fontWeight: '500',
+    paddingVertical: 6,
   },
   totalText: {
     fontSize: 14,
     color: '#1f2937',
     textAlign: 'center',
     fontWeight: '600',
+    paddingVertical: 6,
   },
   maxQuantityText: {
     fontSize: 10,
@@ -1652,24 +1608,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   deleteButton: {
-    padding: 4,
+    padding: 6,
     alignSelf: 'center',
+    backgroundColor: '#fef2f2',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
   emptyItems: {
     padding: 40,
     alignItems: 'center',
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#d1d5db',
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
   },
   emptyItemsText: {
     marginTop: 8,
     color: '#9ca3af',
     fontSize: 16,
+    textAlign: 'center',
   },
   addItemButton: {
     flexDirection: 'row',
@@ -1731,7 +1686,7 @@ const styles = StyleSheet.create({
   grandTotalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#007AFF',
   },
   saveButton: {
     backgroundColor: '#007AFF',
@@ -1739,6 +1694,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 24,
+    marginBottom: 20,
   },
   saveButtonDisabled: {
     backgroundColor: '#9ca3af',
@@ -1794,6 +1750,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
   },
   searchIcon: {
     marginRight: 8,
@@ -1802,6 +1759,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1f2937',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   clearSearchButton: {
     padding: 4,
@@ -1813,6 +1776,7 @@ const styles = StyleSheet.create({
   modalListContentEmpty: {
     paddingBottom: 16,
     flexGrow: 1,
+    justifyContent: 'center',
   },
   modalItem: {
     flexDirection: 'row',
@@ -1877,6 +1841,7 @@ const styles = StyleSheet.create({
   emptyModal: {
     padding: 40,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyModalText: {
     fontSize: 16,

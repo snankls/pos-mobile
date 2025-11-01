@@ -586,7 +586,6 @@ const styles = StyleSheet.create({
   },
   modalTriggerPlaceholder: {
     fontSize: 16,
-    color: '#6B7280',
   },
   errorText: {
     color: '#FF3B30',

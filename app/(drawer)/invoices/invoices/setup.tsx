@@ -510,16 +510,12 @@ export default function InvoicesSetupScreen() {
             try {
               // If the item has an ID (existing item from API), delete from server
               if (itemToDelete.id) {
-                console.log('Deleting item from server with ID:', itemToDelete.id);
-                
                 const response = await axios.delete(`${API_URL}/invoices/items/${itemToDelete.id}`, {
                   headers: { 
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
                   }
                 });
-                
-                console.log('Delete API response:', response.data);
                 
                 if (response.status === 200) {
                   // Remove from local state after successful API call
@@ -533,8 +529,6 @@ export default function InvoicesSetupScreen() {
                   Alert.alert('Success', 'Item deleted successfully');
                 }
               } else {
-                // If it's a new item (no ID), just remove from local state
-                console.log('Removing new item from local state');
                 const updatedItems = itemsList.filter((_, i) => i !== index);
                 setItemsList(updatedItems);
                 const updatedPickers = showProductPickers.filter((_, i) => i !== index);
@@ -1388,7 +1382,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   modalTriggerPlaceholder: {
-    color: '#8E8E93',
     fontSize: 16,
   },
   textArea: {
@@ -1419,6 +1412,11 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     minWidth: 800,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    overflow: 'hidden',
   },
   tableHeader: {
     flexDirection: 'row',
@@ -1471,7 +1469,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRightWidth: 1,
     borderRightColor: '#f0f0f0',
-    justifyContent: 'center',
   },
   cellNumber: {
     width: 40,
@@ -1539,11 +1536,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   deleteButton: {
-    padding: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 24,
-    height: 24,
+    padding: 6,
+    alignSelf: 'center',
+    backgroundColor: '#fef2f2',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
   emptyItems: {
     padding: 20,

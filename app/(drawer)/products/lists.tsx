@@ -54,6 +54,8 @@ export default function ProductsListsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<keyof Product | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -166,30 +168,46 @@ export default function ProductsListsScreen() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return '#05a34a';
+        return '#34C759';
       case 'inactive':
-        return '#ff3366';
+        return '#FF3B30';
       default:
-        return '#8E8E93';
+        return '#34C759';
     }
   };
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
-  // Column definitions
+  const handleSort = (field: keyof Product) => {
+    const newOrder = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortField(field);
+    setSortOrder(newOrder);
+
+    const sorted = [...allRecords].sort((a, b) => {
+      const aVal = (a[field] ?? '').toString().toLowerCase();
+      const bVal = (b[field] ?? '').toString().toLowerCase();
+      return newOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+
+    setAllRecords(sorted);
+    updatePageRecords(sorted, 1, perPage);
+    setPage(1);
+  };
+
+  // ✅ Column definitions (match actual Product fields)
   const COLUMN_WIDTHS = {
     id: 50,
     image: 70,
     sku: 100,
-    product_name: 180,
-    brand_id: 100,
-    category_id: 100,
-    unit_id: 100,
-    cost_price: 180,
-    sale_price: 120,
-    stock: 120,
-    status: 80,
-    created_by: 120,
+    name: 180,
+    brand_name: 120,
+    category_name: 120,
+    unit_name: 100,
+    cost_price: 150,
+    sale_price: 150,
+    stocks: 100,
+    status: 100,
+    created_by: 130,
     actions: 150,
   };
 
@@ -197,25 +215,76 @@ export default function ProductsListsScreen() {
     id: 'ID',
     image: 'Image',
     sku: 'SKU',
-    product_name: 'Product Name',
-    brand_id: 'Brand',
-    category_id: 'Category',
-    unit_id: 'Units',
+    name: 'Product Name',
+    brand_name: 'Brand',
+    category_name: 'Category',
+    unit_name: 'Units',
     cost_price: 'Cost Price',
     sale_price: 'Sale Price',
-    stock: 'Stocks',
+    stocks: 'Stocks',
     status: 'Status',
     created_by: 'Created By',
     actions: 'Actions',
   };
 
+  // ✅ TableHeader with all sortable columns
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      {Object.keys(COLUMN_WIDTHS).map((key) => (
-        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
-          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
-        </View>
-      ))}
+      {Object.keys(COLUMN_WIDTHS).map((key) => {
+        const typedKey = key as keyof typeof COLUMN_WIDTHS;
+
+        const sortableKeys: (keyof Product)[] = [
+          'sku',
+          'name',
+          'brand_name',
+          'category_name',
+          'unit_name',
+          'cost_price',
+          'sale_price',
+          'stocks',
+          'status',
+        ];
+
+        const isSortable = sortableKeys.includes(typedKey as keyof Product);
+
+        return (
+          <View
+            key={key}
+            style={{
+              width: COLUMN_WIDTHS[typedKey],
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={[
+              styles.headerText,
+              sortField === typedKey && { color: '#007AFF', fontWeight: '600' },
+            ]}>
+              {COLUMN_LABELS[typedKey]}
+            </Text>
+
+            {isSortable && (
+              <TouchableOpacity
+                onPress={() => handleSort(typedKey as keyof Product)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={
+                    sortField === typedKey
+                      ? sortOrder === 'asc'
+                        ? 'arrow-up'
+                        : 'arrow-down'
+                      : 'swap-vertical'
+                  }
+                  size={16}
+                  color={sortField === typedKey ? '#007AFF' : '#9CA3AF'}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -232,7 +301,7 @@ export default function ProductsListsScreen() {
               ? { uri: `${IMAGE_URL}/products/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
-          style={{ width: 50, height: 50 }}
+          style={styles.imageContainer}
           resizeMode="cover"
         />
       </View>
@@ -241,19 +310,19 @@ export default function ProductsListsScreen() {
         <Text style={styles.cellText}>{item.sku}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.product_name }}>
+      <View style={{ width: COLUMN_WIDTHS.name }}>
         <Text style={styles.cellText}>{item.name}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.brand_id }}>
+      <View style={{ width: COLUMN_WIDTHS.brand_name }}>
         <Text style={styles.cellText}>{item.brand_name}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.category_id }}>
+      <View style={{ width: COLUMN_WIDTHS.category_name }}>
         <Text style={styles.cellText}>{item.category_name}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.unit_id }}>
+      <View style={{ width: COLUMN_WIDTHS.unit_name }}>
         <Text style={styles.cellText}>{item.unit_name}</Text>
       </View>
 
@@ -265,7 +334,7 @@ export default function ProductsListsScreen() {
         <Text style={styles.cellText}>{item.sale_price || '-'}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.stock }}>
+      <View style={{ width: COLUMN_WIDTHS.stocks }}>
         <Text style={styles.cellText}>{item.stocks || '-'}</Text>
       </View>
 
@@ -390,12 +459,13 @@ export default function ProductsListsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 10,
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA'
   },
   title: {
     fontSize: 22,
@@ -448,8 +518,19 @@ const styles = StyleSheet.create({
   },
   headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
   cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, alignSelf: 'flex-start' },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  imageContainer: { width: 40, height: 40, borderRadius: 6, marginHorizontal: 10 },
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   actionButtons: { flexDirection: 'row', gap: 10 },
   actionButton: {
     flexDirection: 'row',

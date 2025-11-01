@@ -23,7 +23,7 @@ interface IReturn {
   id: number;
   invoice_number?: string;
   customer_name?: string;
-  invoice_date?: string;
+  return_date?: string;
   total_quantity: string;
   total_price: string;
   discount_value: string;
@@ -51,6 +51,8 @@ export default function ReturnsListsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<keyof IReturn | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -172,27 +174,48 @@ export default function ReturnsListsScreen() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return '#05a34a';
+        return '#34C759';
       case 'inactive':
-        return '#ff3366';
+        return '#FF3B30';
       default:
-        return '#8E8E93';
+        return '#34C759';
     }
   };
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
+
+  const handleSort = (field: keyof IReturn) => {
+    // If clicking the same column, toggle asc/desc
+    const newOrder =
+      sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+
+    setSortField(field);
+    setSortOrder(newOrder);
+
+    const sortedRecords = [...allRecords].sort((a, b) => {
+      const valA = a[field]?.toString().toLowerCase() || '';
+      const valB = b[field]?.toString().toLowerCase() || '';
+      return newOrder === 'asc'
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
+    });
+
+    setAllRecords(sortedRecords);
+    updatePageRecords(sortedRecords, 1, perPage);
+    setPage(1);
+  };
 
   // Column definitions
   const COLUMN_WIDTHS = {
     id: 50,
     invoice_number: 150,
     customer_name: 150,
-    invoice_date: 120,
-    total_quantity: 80,
-    total_price: 100,
-    total_discount: 100,
-    grand_total: 120,
-    status: 80,
+    return_date: 120,
+    total_quantity: 120,
+    total_price: 150,
+    total_discount: 150,
+    grand_total: 150,
+    status: 100,
     created_by: 120,
     actions: 150,
   };
@@ -201,7 +224,7 @@ export default function ReturnsListsScreen() {
     id: 'ID',
     invoice_number: 'Invoice Number',
     customer_name: 'Customer Name',
-    invoice_date: 'Invoice Date',
+    return_date: 'Return Date',
     total_quantity: 'Quantity',
     total_price: 'Price',
     total_discount: 'Discount',
@@ -213,11 +236,63 @@ export default function ReturnsListsScreen() {
 
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      {Object.keys(COLUMN_WIDTHS).map((key) => (
-        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
-          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
-        </View>
-      ))}
+      {Object.keys(COLUMN_WIDTHS).map((key) => {
+        const typedKey = key as keyof typeof COLUMN_WIDTHS;
+
+        // ✅ valid sortable fields from Customer interface
+        const sortableKeys: (keyof IReturn)[] = [
+          'invoice_number',
+          'customer_name',
+          'return_date',
+          'total_quantity',
+          'total_price',
+          'discount_value',
+          'total_discount',
+          'grand_total',
+          'status',
+        ];
+
+        const isSortable = sortableKeys.includes(typedKey as keyof IReturn);
+
+        return (
+          <View
+            key={key}
+            style={{
+              width: COLUMN_WIDTHS[typedKey],
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={[
+                styles.headerText,
+                sortField === typedKey && { color: '#007AFF', fontWeight: '600' },
+              ]}
+            >
+              {COLUMN_LABELS[typedKey]}
+            </Text>
+
+            {isSortable && (
+              <TouchableOpacity
+                onPress={() => handleSort(typedKey as keyof IReturn)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={
+                    sortField === typedKey
+                      ? sortOrder === 'asc'
+                        ? 'arrow-up'
+                        : 'arrow-down'
+                      : 'swap-vertical'
+                  }
+                  size={16}
+                  color={sortField === typedKey ? '#007AFF' : '#9CA3AF'}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -235,8 +310,8 @@ export default function ReturnsListsScreen() {
         <Text style={styles.cellText}>{item.customer_name}</Text>
       </View>
 
-      <View style={{ width: COLUMN_WIDTHS.invoice_date }}>
-        <Text style={styles.cellText}>{item.invoice_date ? item.invoice_date.split('T')[0] : ''}</Text>
+      <View style={{ width: COLUMN_WIDTHS.return_date }}>
+        <Text style={styles.cellText}>{item.return_date ? item.return_date.split('T')[0] : ''}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.total_quantity }}>
@@ -376,12 +451,13 @@ export default function ReturnsListsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 10,
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA'
   },
   title: {
     fontSize: 22,
@@ -434,8 +510,18 @@ const styles = StyleSheet.create({
   },
   headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
   cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, alignSelf: 'flex-start' },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   actionButtons: { flexDirection: 'row', gap: 10 },
   actionButton: {
     flexDirection: 'row',

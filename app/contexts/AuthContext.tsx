@@ -6,9 +6,12 @@ import { router, usePathname } from 'expo-router';
 
 interface User {
   id: number;
-  name: string;
+  full_name: string;
   email: string;
   first_name?: string;
+  images?: {
+    image_name?: string;
+  };
 }
 
 interface AuthContextType {
@@ -25,6 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);

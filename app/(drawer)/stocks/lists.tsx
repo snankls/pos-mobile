@@ -46,6 +46,8 @@ export default function StocksListsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<keyof Stock | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -142,9 +144,9 @@ export default function StocksListsScreen() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return '#05a34a';
+        return '#34C759';
       case 'inactive':
-        return '#ff3366';
+        return '#FF3B30';
       default:
         return '#6571ff';
     }
@@ -152,14 +154,35 @@ export default function StocksListsScreen() {
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
+  const handleSort = (field: keyof Stock) => {
+    // If clicking the same column, toggle asc/desc
+    const newOrder =
+      sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+
+    setSortField(field);
+    setSortOrder(newOrder);
+
+    const sortedRecords = [...allRecords].sort((a, b) => {
+      const valA = a[field]?.toString().toLowerCase() || '';
+      const valB = b[field]?.toString().toLowerCase() || '';
+      return newOrder === 'asc'
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
+    });
+
+    setAllRecords(sortedRecords);
+    updatePageRecords(sortedRecords, 1, perPage);
+    setPage(1);
+  };
+
   // Column definitions
   const COLUMN_WIDTHS = {
     id: 50,
-    stock_number: 120,
-    stock_date: 100,
-    total_stock: 100,
-    total_price: 100,
-    status: 80,
+    stock_number: 150,
+    stock_date: 120,
+    total_stock: 120,
+    total_price: 150,
+    status: 100,
     created_by: 100,
     actions: 150,
   };
@@ -177,11 +200,59 @@ export default function StocksListsScreen() {
 
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      {Object.keys(COLUMN_WIDTHS).map((key) => (
-        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
-          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
-        </View>
-      ))}
+      {Object.keys(COLUMN_WIDTHS).map((key) => {
+        const typedKey = key as keyof typeof COLUMN_WIDTHS;
+
+        // ✅ valid sortable fields
+        const sortableKeys: (keyof Stock)[] = [
+          'stock_number',
+          'stock_date',
+          'total_stock',
+          'total_price',
+          'status',
+        ];
+
+        const isSortable = sortableKeys.includes(typedKey as keyof Stock);
+
+        return (
+          <View
+            key={key}
+            style={{
+              width: COLUMN_WIDTHS[typedKey],
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={[
+                styles.headerText,
+                sortField === typedKey && { color: '#007AFF', fontWeight: '600' },
+              ]}
+            >
+              {COLUMN_LABELS[typedKey]}
+            </Text>
+
+            {isSortable && (
+              <TouchableOpacity
+                onPress={() => handleSort(typedKey as keyof Stock)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={
+                    sortField === typedKey
+                      ? sortOrder === 'asc'
+                        ? 'arrow-up'
+                        : 'arrow-down'
+                      : 'swap-vertical'
+                  }
+                  size={16}
+                  color={sortField === typedKey ? '#007AFF' : '#9CA3AF'}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -327,12 +398,13 @@ export default function StocksListsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 10,
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA'
   },
   title: {
     fontSize: 22,
@@ -368,25 +440,35 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   tableHeader: {
-    flexDirection: 'row',
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    minWidth: 800,
+    flexDirection: 'row', 
+    padding: 12, 
+    backgroundColor: '#F8F9FA', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E5E5EA',
+    minWidth: 600 
   },
-  tableRow: {
-    flexDirection: 'row',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    alignItems: 'center',
-    minWidth: 800,
+  tableRow: { 
+    flexDirection: 'row', 
+    padding: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F2F2F7', 
+    alignItems: 'center', 
+    minWidth: 600 
   },
-  headerText: { fontWeight: 'bold', fontSize: 14, color: '#333' },
-  cellText: { fontSize: 14, color: '#333' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, alignSelf: 'flex-start' },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
+  cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   actionButtons: { flexDirection: 'row', gap: 10 },
   actionButton: {
     flexDirection: 'row',

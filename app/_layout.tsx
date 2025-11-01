@@ -1,8 +1,8 @@
 // app/_layout.tsx
 import { Slot } from "expo-router";
-import { AuthProvider } from "./contexts/AuthContext";
 import { View, StyleSheet } from "react-native";
 import Footer from "./components/Footer";
+import { AuthProvider } from "./contexts/AuthContext";
 
 export default function RootLayout() {
   return (

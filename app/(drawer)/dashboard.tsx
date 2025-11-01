@@ -90,7 +90,7 @@ export default function Dashboard() {
       title: 'Customers', 
       value: dashboardData.customers_count.toString(), 
       icon: 'people', 
-      color: '#ff3366' 
+      color: '#FF3B30' 
     },
     { 
       title: 'Revenue', 

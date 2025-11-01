@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, Image, Text, Modal, TouchableWithoutFeedback } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { DrawerActions, useNavigation } from '@react-navigation/native';
-import { useAuth } from '../contexts/AuthContext';
-import { useRouter } from 'expo-router';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  Image,
+  Text,
+  Modal,
+  TouchableWithoutFeedback
+} from 'react-native';
 import axios from 'axios';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
 
 interface User {
   id: number;
@@ -85,10 +94,14 @@ export default function Header() {
       </TouchableOpacity>
 
       {/* Logo */}
-      <Image
-        source={require('../../assets/images/favicon.png')}
-        style={styles.logoImage}
-      />
+      <TouchableOpacity
+        onPress={() => router.push('/(drawer)/dashboard')}
+      >
+        <Image
+          source={require('../../assets/images/favicon.png')}
+          style={styles.logoImage}
+        />
+      </TouchableOpacity>
 
       {/* User icon */}
       <TouchableOpacity onPress={() => setDropdownVisible(true)}>

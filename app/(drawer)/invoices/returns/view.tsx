@@ -78,8 +78,8 @@ export default function ReturnsViewScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return { color: '#059669', bgColor: '#D1FAE5' };
-      case 'Inactive': return { color: '#DC2626', bgColor: '#FEE2E2' };
+      case 'active': return { color: '#059669', bgColor: '#D1FAE5' };
+      case 'inactive': return { color: '#DC2626', bgColor: '#FEE2E2' };
       default: return { color: '#6B7280', bgColor: '#F3F4F6' };
     }
   };
@@ -393,7 +393,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   errorContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

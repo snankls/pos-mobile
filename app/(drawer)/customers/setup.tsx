@@ -690,7 +690,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   modalTriggerPlaceholder: {
-    color: '#8E8E93',
     fontSize: 16,
   },
   uploadButton: {

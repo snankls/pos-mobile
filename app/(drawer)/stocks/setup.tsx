@@ -1094,14 +1094,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
-    width: '100%', // Make trigger full width
+    width: '100%',
   },
   modalTriggerText: {
     color: '#1C1C1E',
     fontSize: 16,
   },
   modalTriggerPlaceholder: {
-    color: '#8E8E93',
     fontSize: 16,
   },
   textArea: {

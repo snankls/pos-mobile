@@ -24,7 +24,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.snankls.pointofsale"
+      "package": "com.snankls.pointofsale",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "output": "static",

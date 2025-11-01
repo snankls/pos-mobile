@@ -1,3 +1,4 @@
+// components/DrawerContent.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -6,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
+  Image,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,8 +60,8 @@ const menuData: MenuItem[] = [
     items: [
       { id: 'products-list', title: 'Listing', route: 'products/lists', icon: 'list-outline' },
       { id: 'products-add', title: 'Add New', route: 'products/setup', icon: 'add-circle-outline' },
-      { id: 'products-categories', title: 'Categories', route: 'products/categories', icon: 'albums-outline' },
       { id: 'products-brands', title: 'Brands', route: 'products/brands', icon: 'ribbon-outline' },
+      { id: 'products-categories', title: 'Categories', route: 'products/categories', icon: 'albums-outline' },
       { id: 'products-units', title: 'Units', route: 'products/units', icon: 'resize-outline' },
     ],
   },
@@ -116,6 +118,8 @@ interface DrawerContentProps {
 }
 
 export default function DrawerContent(props: DrawerContentProps) {
+  const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
+
   const router = useRouter();
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -208,10 +212,21 @@ export default function DrawerContent(props: DrawerContentProps) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <Ionicons name="person-circle-outline" size={54} color="#fff" />
+          {user?.images?.image_name ? (
+            <View style={{ width: 54, height: 54, borderRadius: 27, overflow: 'hidden' }}>
+              <Image
+                source={{ uri: `${IMAGE_URL}/users/${user.images.image_name}` }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+            </View>
+          ) : (
+            <Ionicons name="person-circle-outline" size={54} color="#fff" />
+          )}
+
           <View style={styles.userText}>
             <Text style={styles.userName}>
-              {user?.first_name || user?.name || 'User'}
+              {user?.full_name || `${user?.full_name || ''}`.trim() || 'User'}
             </Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
           </View>

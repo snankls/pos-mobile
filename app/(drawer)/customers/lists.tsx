@@ -53,6 +53,8 @@ export default function CustomersListsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<keyof Customer | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -166,41 +168,60 @@ export default function CustomersListsScreen() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'active':
-        return '#05a34a';
+        return '#34C759';
       case 'inactive':
-        return '#ff3366';
-      case 'blocked':
         return '#FF3B30';
       default:
-        return '#8E8E93';
+        return '#34C759';
     }
   };
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
+  const handleSort = (field: keyof Customer) => {
+    // If clicking the same column, toggle asc/desc
+    const newOrder =
+      sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+
+    setSortField(field);
+    setSortOrder(newOrder);
+
+    const sortedRecords = [...allRecords].sort((a, b) => {
+      const valA = a[field]?.toString().toLowerCase() || '';
+      const valB = b[field]?.toString().toLowerCase() || '';
+      return newOrder === 'asc'
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
+    });
+
+    setAllRecords(sortedRecords);
+    updatePageRecords(sortedRecords, 1, perPage);
+    setPage(1);
+  };
+
   const COLUMN_WIDTHS = {
     id: 50,
     image: 70,
-    id_code: 100,
-    customer_name: 180,
+    code: 100,
+    name: 180,
     mobile_number: 150,
     whatsapp: 100,
-    city: 120,
-    status: 80,
-    created_by: 100,
+    city_name: 120,
+    status: 100,
+    created_by: 120,
     actions: 150,
   };
 
   const COLUMN_LABELS: Record<keyof typeof COLUMN_WIDTHS, string> = {
     id: 'ID',
     image: 'Image',
-    id_code: 'Code',
-    customer_name: 'Customer Name',
+    code: 'Code',
+    name: 'Customer Name',
     mobile_number: 'Mobile Number',
-    whatsapp: 'Whatsapp',
-    city: 'City',
+    whatsapp: 'WhatsApp',
+    city_name: 'City',
     status: 'Status',
     created_by: 'Created By',
     actions: 'Actions',
@@ -208,11 +229,60 @@ export default function CustomersListsScreen() {
 
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      {Object.keys(COLUMN_WIDTHS).map((key) => (
-        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
-          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
-        </View>
-      ))}
+      {Object.keys(COLUMN_WIDTHS).map((key) => {
+        const typedKey = key as keyof typeof COLUMN_WIDTHS;
+
+        // ✅ valid sortable fields from Customer interface
+        const sortableKeys: (keyof Customer)[] = [
+          'code',
+          'name',
+          'mobile_number',
+          'city_name',
+          'whatsapp',
+          'status',
+        ];
+
+        const isSortable = sortableKeys.includes(typedKey as keyof Customer);
+
+        return (
+          <View
+            key={key}
+            style={{
+              width: COLUMN_WIDTHS[typedKey],
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={[
+                styles.headerText,
+                sortField === typedKey && { color: '#007AFF', fontWeight: '600' },
+              ]}
+            >
+              {COLUMN_LABELS[typedKey]}
+            </Text>
+
+            {isSortable && (
+              <TouchableOpacity
+                onPress={() => handleSort(typedKey as keyof Customer)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={
+                    sortField === typedKey
+                      ? sortOrder === 'asc'
+                        ? 'arrow-up'
+                        : 'arrow-down'
+                      : 'swap-vertical'
+                  }
+                  size={16}
+                  color={sortField === typedKey ? '#007AFF' : '#9CA3AF'}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -229,15 +299,15 @@ export default function CustomersListsScreen() {
               ? { uri: `${IMAGE_URL}/customers/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
-          style={{ width: 50, height: 50, borderRadius: 5 }}
+          style={styles.imageContainer}
           resizeMode="cover"
           onError={(e) => console.log('Image error:', e.nativeEvent.error)}
         />
       </View>
-      <View style={{ width: COLUMN_WIDTHS.id_code }}>
+      <View style={{ width: COLUMN_WIDTHS.code }}>
         <Text style={styles.cellText}>{item.code}</Text>
       </View>
-      <View style={{ width: COLUMN_WIDTHS.customer_name }}>
+      <View style={{ width: COLUMN_WIDTHS.name }}>
         <Text style={styles.cellText}>{item.name}</Text>
       </View>
       <View style={{ width: COLUMN_WIDTHS.mobile_number }}>
@@ -246,7 +316,7 @@ export default function CustomersListsScreen() {
       <View style={{ width: COLUMN_WIDTHS.whatsapp }}>
         <Text style={styles.cellText}>{item.whatsapp || '-'}</Text>
       </View>
-      <View style={{ width: COLUMN_WIDTHS.city }}>
+      <View style={{ width: COLUMN_WIDTHS.city_name }}>
         <Text style={styles.cellText}>{item.city_name || '-'}</Text>
       </View>
       <View style={{ width: COLUMN_WIDTHS.status }}>
@@ -362,12 +432,13 @@ export default function CustomersListsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 10,
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA'
   },
   title: {
     fontSize: 22,
@@ -420,8 +491,19 @@ const styles = StyleSheet.create({
   },
   headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
   cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, alignSelf: 'flex-start' },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  imageContainer: { width: 40, height: 40, borderRadius: 6, marginHorizontal: 10 },
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   actionButtons: { flexDirection: 'row', gap: 10 },
   actionButton: {
     flexDirection: 'row',

@@ -1,3 +1,4 @@
+// components/GlobalRefresh.tsx
 import React, { useState, useCallback, useEffect, ReactNode } from "react";
 import {
   View,

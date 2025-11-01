@@ -13,6 +13,8 @@ import {
   Image,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from 'expo-router';
@@ -49,6 +51,8 @@ export default function BrandsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [validationError, setValidationError] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<keyof Brand | null>(null);
 
   // Modal & editing states
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -282,8 +286,29 @@ export default function BrandsScreen() {
     switch (status?.toLowerCase()) {
       case 'active': return '#34C759';
       case 'inactive': return '#FF3B30';
-      default: return '#8E8E93';
+      default: return '#34C759';
     }
+  };
+
+  const handleSort = (field: keyof Brand) => {
+    // If clicking the same column, toggle asc/desc
+    const newOrder =
+      sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+
+    setSortField(field);
+    setSortOrder(newOrder);
+
+    const sortedRecords = [...allRecords].sort((a, b) => {
+      const valA = a[field]?.toString().toLowerCase() || '';
+      const valB = b[field]?.toString().toLowerCase() || '';
+      return newOrder === 'asc'
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
+    });
+
+    setAllRecords(sortedRecords);
+    updatePageRecords(sortedRecords, 1, perPage);
+    setPage(1);
   };
 
   const COLUMN_WIDTHS = {
@@ -306,11 +331,55 @@ export default function BrandsScreen() {
 
   const TableHeader = () => (
     <View style={styles.tableHeader}>
-      {Object.keys(COLUMN_WIDTHS).map((key) => (
-        <View key={key} style={{ width: COLUMN_WIDTHS[key as keyof typeof COLUMN_WIDTHS] }}>
-          <Text style={styles.headerText}>{COLUMN_LABELS[key as keyof typeof COLUMN_LABELS]}</Text>
-        </View>
-      ))}
+      {Object.keys(COLUMN_WIDTHS).map((key) => {
+        const typedKey = key as keyof typeof COLUMN_WIDTHS;
+
+        // Only these columns are sortable
+        const sortableKeys: (keyof Brand)[] = [
+          'name',
+          'status'
+        ];
+
+        const isSortable = sortableKeys.includes(typedKey as keyof Brand);
+
+        return (
+          <View
+            key={key}
+            style={{
+              width: COLUMN_WIDTHS[typedKey],
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={[
+              styles.headerText,
+              sortField === typedKey && { color: '#007AFF', fontWeight: '600' },
+            ]}>
+              {COLUMN_LABELS[typedKey]}
+            </Text>
+
+            {isSortable && (
+              <TouchableOpacity
+                onPress={() => handleSort(typedKey as keyof Brand)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={
+                    sortField === typedKey
+                      ? sortOrder === 'asc'
+                        ? 'arrow-up'
+                        : 'arrow-down'
+                      : 'swap-vertical'
+                  }
+                  size={16}
+                  color={sortField === typedKey ? '#007AFF' : '#9CA3AF'}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -325,7 +394,7 @@ export default function BrandsScreen() {
               ? { uri: `${IMAGE_URL}/brands/${item.image_url}` }
               : require('../../../assets/images/placeholder.jpg')
           }
-          style={{ width: 45, height: 45, borderRadius: 6 }}
+          style={styles.imageContainer}
           resizeMode="cover"
         />
       </View>
@@ -424,9 +493,22 @@ export default function BrandsScreen() {
         onPageChange={setPage}
       />
 
-      {/* Add/Edit Modal */}
-      <Modal visible={editModalVisible} animationType="slide" transparent onRequestClose={() => setEditModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+      {/* Add/Edit Modal - WITH KEYBOARD HANDLING */}
+      <Modal 
+        visible={editModalVisible} 
+        animationType="slide" 
+        transparent 
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setEditModalVisible(false)}
+          />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{isEditing ? 'Edit Brand' : 'Add Brand'}</Text>
@@ -435,13 +517,18 @@ export default function BrandsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={[styles.modalBody, styles.modalBodyWithPadding]}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>Name *</Text>
                 <TextInput
                   style={[styles.input, validationError && styles.inputError]}
                   value={editName}
                   onChangeText={setEditName}
+                  placeholderTextColor="#34C759"
                 />
                 {validationError && <Text style={styles.errorText}>{validationError}</Text>}
               </View>
@@ -492,12 +579,25 @@ export default function BrandsScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Status Selection Modal */}
-      <Modal visible={statusModalVisible} transparent animationType="slide" onRequestClose={() => setStatusModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+      <Modal 
+        visible={statusModalVisible} 
+        transparent 
+        animationType="slide" 
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setStatusModalVisible(false)}
+          />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Status</Text>
@@ -526,7 +626,7 @@ export default function BrandsScreen() {
               contentContainerStyle={styles.modalListContent}
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -587,13 +687,19 @@ const styles = StyleSheet.create({
   },
   headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
   cellText: { fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
+  imageContainer: { width: 40, height: 40, borderRadius: 6, marginHorizontal: 10 },
   statusBadge: { 
-    paddingHorizontal: 8, 
-    paddingVertical: 4, 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     borderRadius: 12, 
-    alignSelf: 'flex-start' 
+    alignSelf: 'flex-start',
   },
-  statusText: { color: '#fff', fontWeight: '600', fontSize: 12 },
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   actionButtons: { flexDirection: 'row', gap: 8 },
   actionButton: { 
     width: 32,
@@ -658,6 +764,21 @@ const styles = StyleSheet.create({
   },
 
   // Modal Styles
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBodyWithPadding: {
+    paddingBottom: 30,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -725,7 +846,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   modalTriggerPlaceholder: {
-    color: '#8E8E93',
     fontSize: 16,
   },
   uploadButton: {
