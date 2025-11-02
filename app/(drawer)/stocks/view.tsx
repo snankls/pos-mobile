@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import axios from 'axios';
@@ -21,14 +20,47 @@ export default function StocksViewScreen() {
 
   const [stock, setStock] = useState<any>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (token && id) {
       fetchStock(id as string);
+      fetchSettings();
     }
   }, [token, id]);
+  
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        console.log('Authentication Error', 'Please login again');
+      }
+    }
+  };
 
   const fetchStock = async (stockId: string) => {
     try {
@@ -50,10 +82,9 @@ export default function StocksViewScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return { color: '#059669', bgColor: '#D1FAE5' };
-      case 'inactive': return { color: '#6B7280', bgColor: '#F3F4F6' };
-      case 'Deleted': return { color: '#DC2626', bgColor: '#FEE2E2' };
-      default: return { color: '#6B7280', bgColor: '#F3F4F6' };
+      case 'active': return { color: '#fff', bgColor: '#34C759' };
+      case 'inactive': return { color: '#fff', bgColor: '#FF3B30' };
+      default: return { color: '#fff', bgColor: '#34C759' };
     }
   };
 
@@ -115,8 +146,9 @@ export default function StocksViewScreen() {
           
           <Text style={styles.title}>Stock Details</Text>
           
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="download-outline" size={20} color="#6366F1" />
+          <TouchableOpacity onPress={() => router.push(`/(drawer)/stocks/setup?id=${id}`)} style={styles.editButton}>
+            <Ionicons name="create-outline" size={20} color="#6366F1" />
+            <Text style={styles.editText}>Edit</Text>
           </TouchableOpacity>
         </View>
 
@@ -145,7 +177,7 @@ export default function StocksViewScreen() {
           
           <View style={styles.statCard}>
             <Ionicons name="cash-outline" size={24} color="#10B981" />
-            <Text style={styles.statValue}>₹{formatCurrency(parseFloat(stock.total_price))}</Text>
+            <Text style={styles.statValue}>{settings.currency}{formatCurrency(parseFloat(stock.total_price))}</Text>
             <Text style={styles.statLabel}>Total Value</Text>
           </View>
           
@@ -189,14 +221,14 @@ export default function StocksViewScreen() {
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Unit Price:</Text>
                     <Text style={styles.detailValue}>
-                      ₹{formatCurrency(parseFloat(item.price))}
+                      {settings.currency}{formatCurrency(parseFloat(item.price))}
                     </Text>
                   </View>
                   
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Total Amount:</Text>
                     <Text style={styles.detailValue}>
-                      ₹{formatCurrency(parseFloat(item.total_amount))}
+                      {settings.currency}{formatCurrency(parseFloat(item.total_amount))}
                     </Text>
                   </View>
                 </View>
@@ -219,14 +251,14 @@ export default function StocksViewScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total Stock Value</Text>
             <Text style={styles.summaryValue}>
-              ₹{formatCurrency(parseFloat(stock.total_price))}
+              {settings.currency}{formatCurrency(parseFloat(stock.total_price))}
             </Text>
           </View>
           
           <View style={[styles.summaryRow, styles.grandTotalRow]}>
             <Text style={styles.grandTotalLabel}>Net Value</Text>
             <Text style={styles.grandTotalValue}>
-              ₹{formatCurrency(parseFloat(stock.total_price))}
+              {settings.currency}{formatCurrency(parseFloat(stock.total_price))}
             </Text>
           </View>
         </View>
@@ -278,7 +310,7 @@ const DetailItem = ({ icon, label, value }: any) => (
     <View style={styles.detailContent}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue} numberOfLines={1}>
-        {value || 'Not provided'}
+        {value || '-'}
       </Text>
     </View>
   </View>
@@ -347,6 +379,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  editText: {
+    color: '#6366F1',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   iconButton: {
     padding: 8,

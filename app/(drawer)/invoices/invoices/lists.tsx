@@ -25,10 +25,10 @@ interface Invoice {
   customer_name?: string;
   invoice_date?: string;
   total_quantity: string;
-  total_price: string;
+  total_price: number;
   discount_value: string;
-  total_discount: string;
-  grand_total?: string;
+  total_discount: number;
+  grand_total: number;
   status: string;
   created_by?: string;
   created_at?: string;
@@ -200,6 +200,13 @@ export default function InvoicesListsScreen() {
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const handleSort = (field: keyof Invoice) => {
     // If clicking the same column, toggle asc/desc
     const newOrder =
@@ -333,15 +340,15 @@ export default function InvoicesListsScreen() {
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.total_price }}>
-        <Text style={styles.cellText}>{settings.currency}{item.total_price}</Text>
+        <Text style={styles.cellText}>{settings.currency}{formatCurrency(item.total_price)}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.total_discount }}>
-        <Text style={styles.cellText}>{settings.currency}{item.total_discount}</Text>
+        <Text style={styles.cellText}>{settings.currency}{formatCurrency(item.total_discount)}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.grand_total }}>
-        <Text style={styles.cellText}>{settings.currency}{item.grand_total || '-'}</Text>
+        <Text style={styles.cellText}>{settings.currency}{formatCurrency(item.grand_total)}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.status }}>

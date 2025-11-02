@@ -59,8 +59,8 @@ interface InvoiceItem {
   unit_name: string;
   discountType: string;
   discountValue: string;
-  price: string;
-  total_amount: string;
+  price: number;
+  total_amount: number;
   max_return_quantity?: string;
 }
 
@@ -142,8 +142,8 @@ export default function ReturnsSetupScreen() {
     itemsList.forEach(item => {
       if (item.product_id) {
         const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const itemTotal = parseFloat(item.total_amount) || 0;
+        const price = Number(item.price) || 0;
+        const itemTotal = Number(item.total_amount) || 0;
         
         quantityTotal += quantity;
         priceTotal += price * quantity;
@@ -157,80 +157,36 @@ export default function ReturnsSetupScreen() {
     setGrandTotal(priceTotal - discountTotal);
   };
 
-  const fetchInitialData = async () => {
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
     try {
-      setLoading(true);
-      await Promise.all([fetchInvoiceNumbers(), fetchStatus(), fetchSettings()]);
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      Alert.alert('Error', 'Failed to load data');
-    } finally {
-      setLoading(false);
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        console.log('Authentication Error', 'Please login again');
+      }
     }
   };
-
-  // Check if we're in edit mode
-  useEffect(() => {
-    if (id) {
-      setIsEditMode(true);
-    } else {
-      resetForm();
-    }
-  }, [id]);
-
-  // Combined data fetching effect
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch all initial data
-        await fetchInitialData();
-
-        // If in edit mode and we have ID, fetch return data
-        if (id && isEditMode) {
-          await fetchReturnData(id as string);
-        }
-      } catch (error) {
-        console.error('Error in data initialization:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeData();
-  }, [id, isEditMode, token]);
-
-  // Update filtered products when products or search changes
-  useEffect(() => {
-    if (products.length > 0) {
-      const filtered = products.filter(product => 
-        product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-        product.sku.toLowerCase().includes(productSearch.toLowerCase())
-      );
-      setFilteredProducts(filtered);
-    } else {
-      setFilteredProducts([]);
-    }
-  }, [products, productSearch]);
-
-  // Update filtered invoices when invoices or search changes
-  useEffect(() => {
-    if (invoiceNumbers.length > 0) {
-      const filtered = invoiceNumbers.filter(invoice =>
-        invoice.invoice_number.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
-        invoice.customer_name.toLowerCase().includes(invoiceSearch.toLowerCase())
-      );
-      setFilteredInvoices(filtered);
-    } else {
-      setFilteredInvoices([]);
-    }
-  }, [invoiceNumbers, invoiceSearch]);
-
-  // Update totals when itemsList changes
-  useEffect(() => {
-    updateTotals();
-  }, [itemsList]);
 
   const fetchStatus = async () => {
     if (!token) return;
@@ -329,8 +285,6 @@ export default function ReturnsSetupScreen() {
         max_return_quantity: item.quantity ? item.quantity.toString() : '0' // Maximum that can be returned
       }));
 
-      console.log('Transformed items for originalInvoiceItems:', transformedItems);
-
       setOriginalInvoiceItems(transformedItems);
       
       // Automatically add all products to itemsList for return
@@ -356,9 +310,6 @@ export default function ReturnsSetupScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
-  if (loading) return <LoadingScreen />;
-
   // Fetch available products for returns (products from the selected invoice)
   const fetchAvailableProducts = async (invoiceId: string) => {
     try {
@@ -383,9 +334,9 @@ export default function ReturnsSetupScreen() {
         sale_price: item.sale_price || '0',
         unit_id: item.unit_id?.toString() || '',
         unit_name: item.unit_name || '',
-        quantity: item.quantity || '0', // This is the available quantity for return
+        quantity: item.quantity || '0',
         price: item.sale_price || '0',
-        product_label: `${item.product_name || 'Unknown Product'} (${item.product_sku || 'N/A'}) - ${settings.currency || '$'} ${item.sale_price || '0'}`
+        product_label: `${item.product_name || 'Unknown Product'} (${item.product_sku || 'N/A'}) - ${settings.currency} ${item.sale_price || '0'}`
       }));
       
       setProducts(transformedProducts);
@@ -398,12 +349,12 @@ export default function ReturnsSetupScreen() {
         id: item.product_id,
         name: item.product_name || 'Unknown Product',
         sku: 'N/A',
-        sale_price: item.price,
+        sale_price: String(item.price || '0'),
         unit_id: item.unit_id,
         unit_name: item.unit_name,
         quantity: item.max_return_quantity || '0',
-        price: item.price,
-        product_label: `${item.product_name || 'Unknown Product'} (N/A) - ${settings.currency || '$'} ${item.price}`
+        price: String(item.price || '0'),
+        product_label: `${item.product_name || 'Unknown Product'} (N/A) - {settings.currency} ${item.price}`
       }));
       
       setProducts(productsFromItems);
@@ -477,36 +428,73 @@ export default function ReturnsSetupScreen() {
     }
   };
 
-  const fetchSettings = async () => {
-    if (!token) {
-      console.error('Token missing for settings API');
-      return;
+  // Check if we're in edit mode
+  useEffect(() => {
+    if (id) {
+      setIsEditMode(true);
+    } else {
+      resetForm();
     }
+  }, [id]);
 
-    try {
-      const response = await axios.get(`${API_URL}/settings`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
+  // Update filtered products when products or search changes
+  useEffect(() => {
+    if (products.length > 0) {
+      const filtered = products.filter(product => 
+        product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+        product.sku.toLowerCase().includes(productSearch.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    } else {
+      setFilteredProducts([]);
+    }
+  }, [products, productSearch]);
 
-      const settingsObj: Record<string, string> = {};
+  // Update filtered invoices when invoices or search changes
+  useEffect(() => {
+    if (invoiceNumbers.length > 0) {
+      const filtered = invoiceNumbers.filter(invoice =>
+        invoice.invoice_number.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+        invoice.customer_name.toLowerCase().includes(invoiceSearch.toLowerCase())
+      );
+      setFilteredInvoices(filtered);
+    } else {
+      setFilteredInvoices([]);
+    }
+  }, [invoiceNumbers, invoiceSearch]);
 
-      Object.values(response.data).forEach((setting: any) => {
-        if (setting.data_name && setting.data_value !== undefined) {
-          settingsObj[setting.data_name] = setting.data_value;
+  // Update totals when itemsList changes
+  useEffect(() => {
+    updateTotals();
+  }, [itemsList]);
+
+  // Combined data fetching effect
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch all initial data
+        fetchInvoiceNumbers();
+        fetchStatus();
+        fetchSettings();
+
+        // If in edit mode and we have ID, fetch return data
+        if (id && isEditMode) {
+          await fetchReturnData(id as string);
         }
-      });
-
-      setSettings(settingsObj);
-    } catch (error: any) {
-      console.error('Error fetching settings:', error);
-      if (error.response?.status === 401) {
-        Alert.alert('Authentication Error', 'Please login again');
+      } catch (error) {
+        console.error('Error in data initialization:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-  };
+    };
+
+    initializeData();
+  }, [id, isEditMode, token]);
+
+  // ✅ Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   // Date handling
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -542,6 +530,13 @@ export default function ReturnsSetupScreen() {
     clearError('status');
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   // Product selection for specific row
   const handleProductSelect = (productId: string, index: number) => {
     const selectedProduct = products.find(p => p.id === productId);
@@ -553,13 +548,13 @@ export default function ReturnsSetupScreen() {
         ...updatedItems[index],
         product_id: productId,
         product_name: selectedProduct.name,
-        price: selectedProduct.sale_price,
+        price: Number(selectedProduct.sale_price) || 0,
         unit_id: selectedProduct.unit_id,
         unit_name: selectedProduct.unit_name,
         quantity: updatedItems[index].quantity || '0',
-        discountType: originalItem?.discountType || 'Percentage', // Use original discount type
+        discountType: originalItem?.discountType || 'Percentage',
         discountValue: originalItem?.discountValue || '0',
-        total_amount: '0',
+        total_amount: 0,
         max_return_quantity: originalItem?.quantity || selectedProduct.quantity || '0'
       };
       setItemsList(updatedItems);
@@ -607,8 +602,8 @@ export default function ReturnsSetupScreen() {
       unit_name: '',
       discountType: '',
       discountValue: '0',
-      price: '0',
-      total_amount: '0'
+      price: 0,
+      total_amount: 0,
     };
     setItemsList(prev => [...prev, newItem]);
     setShowProductPickers(prev => [...prev, false]);
@@ -676,7 +671,7 @@ export default function ReturnsSetupScreen() {
     
     if (item.product_id && item.quantity && item.price) {
       const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
+      const price = Number(item.price) || 0;
       const discountValue = parseFloat(item.discountValue) || 0;
       
       let discountAmount = 0;
@@ -691,7 +686,7 @@ export default function ReturnsSetupScreen() {
       }
       
       const total = (price * quantity) - discountAmount;
-      item.total_amount = Math.max(0, total).toFixed(2);
+      item.total_amount = parseFloat(Math.max(0, total).toFixed(2));
       setItemsList(updatedItems);
     }
   };
@@ -1040,14 +1035,14 @@ export default function ReturnsSetupScreen() {
         {/* Price */}
         <View style={[styles.cell, styles.cellPrice]}>
           <Text style={styles.priceText} numberOfLines={1}>
-            {settings.currency} {item.price || '0'}
+            {settings.currency}{formatCurrency(item.price)}
           </Text>
         </View>
 
         {/* Total */}
         <View style={[styles.cell, styles.cellTotal]}>
           <Text style={styles.totalText} numberOfLines={1}>
-            {settings.currency} {item.total_amount || '0'}
+            {settings.currency}{formatCurrency(item.total_amount)}
           </Text>
         </View>
 
@@ -1081,7 +1076,7 @@ export default function ReturnsSetupScreen() {
 
         {/* Invoice Number Selection */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Invoice Number <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Invoice Number <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.invoice_number && styles.inputError]}
             onPress={() => setShowInvoicePicker(true)}
@@ -1109,7 +1104,7 @@ export default function ReturnsSetupScreen() {
 
         {/* Return Date */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Return Date <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Return Date <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.return_date && styles.inputError]}
             onPress={() => setShowDatePicker(true)}
@@ -1125,7 +1120,7 @@ export default function ReturnsSetupScreen() {
 
         {/* Status */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Status <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Status <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.status && styles.inputError]}
             onPress={() => setShowStatusPicker(true)}
@@ -1207,15 +1202,15 @@ export default function ReturnsSetupScreen() {
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Price</Text>
-              <Text style={styles.totalValue}>{settings.currency} {totalPrice.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{settings.currency}{formatCurrency(totalPrice)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Discount</Text>
-              <Text style={styles.totalValue}>{settings.currency} {totalDiscount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{settings.currency}{formatCurrency(totalDiscount)}</Text>
             </View>
             <View style={[styles.totalRow, styles.grandTotal]}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalValue}>{settings.currency} {grandTotal.toFixed(2)}</Text>
+              <Text style={styles.grandTotalValue}>{settings.currency}{formatCurrency(grandTotal)}</Text>
             </View>
           </View>
         )}
@@ -1229,9 +1224,7 @@ export default function ReturnsSetupScreen() {
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>
-              {isEditMode ? 'Update Return' : 'Save Return'}
-            </Text>
+            <Text style={styles.saveButtonText}>Save Changing</Text>
           )}
         </TouchableOpacity>
 

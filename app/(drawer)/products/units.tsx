@@ -155,12 +155,6 @@ export default function UnitsScreen() {
       setUpdating(true);
       setValidationError('');
 
-      if (!editName.trim()) {
-        setValidationError('Please enter a name.');
-        setUpdating(false);
-        return;
-      }
-
       const payload = { name: editName.trim(), status: editStatus || 'Active' };
       let res;
 
@@ -460,7 +454,7 @@ export default function UnitsScreen() {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Name *</Text>
+                <Text style={styles.fieldLabel}>Name <Text style={styles.errorText}>*</Text></Text>
                 <TextInput
                   style={[styles.input, validationError && styles.inputError]}
                   value={editName}
@@ -471,7 +465,7 @@ export default function UnitsScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Status *</Text>
+                <Text style={styles.fieldLabel}>Status <Text style={styles.errorText}>*</Text></Text>
                 <TouchableOpacity 
                   style={styles.modalTrigger}
                   onPress={() => setStatusModalVisible(true)}
@@ -491,9 +485,7 @@ export default function UnitsScreen() {
                 {updating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>
-                    {isEditing ? 'Update Unit' : 'Add Unit'}
-                  </Text>
+                  <Text style={styles.saveButtonText}>Save Changing</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -640,7 +632,11 @@ const styles = StyleSheet.create({
   
   // Error Styles
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: { color: '#FF3B30', fontSize: 16, textAlign: 'center', marginVertical: 12 },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
   retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   retryButtonText: { color: '#fff', fontWeight: '600' },
   

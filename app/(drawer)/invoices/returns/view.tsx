@@ -78,10 +78,17 @@ export default function ReturnsViewScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return { color: '#059669', bgColor: '#D1FAE5' };
-      case 'inactive': return { color: '#DC2626', bgColor: '#FEE2E2' };
-      default: return { color: '#6B7280', bgColor: '#F3F4F6' };
+      case 'active': return { color: '#fff', bgColor: '#34C759' };
+      case 'inactive': return { color: '#fff', bgColor: '#FF3B30' };
+      default: return { color: '#fff', bgColor: '#34C759' };
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
@@ -223,7 +230,7 @@ export default function ReturnsViewScreen() {
           <View style={styles.invoiceHeaderRow}>
             <View>
               <Text style={styles.invoiceNumber}>{iReturn.invoice_number}</Text>
-              <Text style={styles.invoiceDate}>{formatDate(iReturn.invoice_date)}</Text>
+              <Text style={styles.invoiceDate}>{formatDate(iReturn.return_date)}</Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}>
               <Text style={[styles.statusText, { color: statusInfo.color }]}>
@@ -286,16 +293,16 @@ export default function ReturnsViewScreen() {
                     SKU: {item.product_sku || 'N/A'} • {item.unit_name}
                   </Text>
                   <Text style={styles.itemDetails}>
-                    {item.quantity} × {item.sale_price}
+                    {item.quantity} × {formatCurrency(item.sale_price)}
                     {item.discount_value > 0 && (
                       <Text style={styles.discountText}>
-                        {' '}({item.discount_value} {item.discount_type === 'Percentage' ? '%' : ''})
+                        {' '}({item.discount_type}{' '}{item.discount_value})
                       </Text>
                     )}
                   </Text>
                 </View>
                 <Text style={styles.itemTotal}>
-                  {settings.currency}{item.total}
+                  {settings.currency}{formatCurrency(item.total ?? 0)}
                 </Text>
               </View>
             ))}
@@ -313,25 +320,19 @@ export default function ReturnsViewScreen() {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>
-              {settings.currency}{iReturn.total_price}
-            </Text>
+            <Text style={styles.summaryValue}>{settings.currency}{formatCurrency(iReturn.total_price ?? 0)}</Text>
           </View>
           
           {iReturn.total_discount > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount</Text>
-              <Text style={[styles.summaryValue, styles.discountValue]}>
-                {settings.currency}{iReturn.total_discount}
-              </Text>
+              <Text style={[styles.summaryValue, styles.discountValue]}>{settings.currency}{formatCurrency(iReturn.total_discount ?? 0)}</Text>
             </View>
           )}
           
           <View style={[styles.summaryRow, styles.grandTotalRow]}>
             <Text style={styles.grandTotalLabel}>Grand Total</Text>
-            <Text style={styles.grandTotalValue}>
-              {settings.currency}{iReturn.grand_total}
-            </Text>
+            <Text style={styles.grandTotalValue}>{settings.currency}{formatCurrency(iReturn.grand_total ?? 0)}</Text>
           </View>
         </View>
 
@@ -350,7 +351,7 @@ export default function ReturnsViewScreen() {
             onPress={emailInvoice}
           >
             <Ionicons name="mail-outline" size={18} color="#fff" />
-            <Text style={styles.buttonText}>Email IReturn</Text>
+            <Text style={styles.buttonText}>Email I-Return</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -367,7 +368,7 @@ const DetailItem = ({ icon, label, value }: any) => (
     <View style={styles.detailContent}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue} numberOfLines={2}>
-        {value || 'Not provided'}
+        {value || '-'}
       </Text>
     </View>
   </View>

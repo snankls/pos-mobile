@@ -11,6 +11,7 @@ import {
   Image,
   Alert,
   ScrollView,
+  Modal,
 } from 'react-native';
 import axios from 'axios';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
@@ -55,6 +56,8 @@ export default function CustomersListsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortField, setSortField] = useState<keyof Customer | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -291,39 +294,89 @@ export default function CustomersListsScreen() {
       <View style={{ width: COLUMN_WIDTHS.id }}>
         <Text style={styles.cellText}>{item.id}</Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.image }}>
-        <Image
-          key={item.id}
-          source={
-            item.image_url
-              ? { uri: `${IMAGE_URL}/customers/${item.image_url}` }
-              : require('../../../assets/images/placeholder.jpg')
-          }
-          style={styles.imageContainer}
-          resizeMode="cover"
-          onError={(e) => console.log('Image error:', e.nativeEvent.error)}
-        />
+        <TouchableOpacity
+          onPress={() => {
+            if (item.image_url) {
+              setSelectedImage(`${IMAGE_URL}/customers/${item.image_url}`);
+            } else {
+              setSelectedImage(null);
+            }
+            setModalVisible(true);
+          }}
+        >
+          <Image
+            source={
+              item.image_url
+                ? { uri: `${IMAGE_URL}/customers/${item.image_url}` }
+                : require('../../../assets/images/placeholder.jpg')
+            }
+            style={styles.imageContainer}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+
+        {/* Full Image Modal */}
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBackground}>
+            {/* ✅ Close Icon */}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+
+            {/* ✅ Full Image */}
+            {selectedImage ? (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/placeholder.jpg')}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </Modal>
       </View>
+
       <View style={{ width: COLUMN_WIDTHS.code }}>
         <Text style={styles.cellText}>{item.code}</Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.name }}>
         <Text style={styles.cellText}>{item.name}</Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.mobile_number }}>
         <Text style={styles.cellText}>{item.mobile_number || '-'}</Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.whatsapp }}>
         <Text style={styles.cellText}>{item.whatsapp || '-'}</Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.city_name }}>
         <Text style={styles.cellText}>{item.city_name || '-'}</Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.status }}>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.created_by }}>
         <Text style={styles.cellText}>
           {item.created_by}
@@ -331,6 +384,7 @@ export default function CustomersListsScreen() {
           {item.created_at ? item.created_at.split('T')[0] : ''}
         </Text>
       </View>
+      
       <View style={{ width: COLUMN_WIDTHS.actions }}>
         <View style={styles.actionButtons}>
           {/* View Button */}
@@ -544,4 +598,30 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: '#FF3B30', textAlign: 'center', marginVertical: 10 },
   retryButton: { padding: 10, backgroundColor: '#007AFF', borderRadius: 6 },
   retryButtonText: { color: '#fff', fontWeight: 'bold' },
+  
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
+  },
 });

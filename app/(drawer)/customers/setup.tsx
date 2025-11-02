@@ -244,7 +244,7 @@ export default function CustomersSetupScreen() {
 
   // 🔹 Get selected city name
   const getSelectedCityName = () => {
-    if (!form.city_id) return 'Select City';
+    if (!form.city_id) return 'Select One';
     const selectedCity = cities.find(city => String(city.id) === form.city_id);
     return selectedCity ? selectedCity.name : 'Select City';
   };
@@ -332,7 +332,7 @@ export default function CustomersSetupScreen() {
 
       {/* ID/Code */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>ID/Code *</Text>
+        <Text style={styles.label}>ID/Code <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.code && styles.inputError]} 
           value={form.code} 
@@ -343,7 +343,7 @@ export default function CustomersSetupScreen() {
 
       {/* Name */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Name *</Text>
+        <Text style={styles.label}>Name <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.name && styles.inputError]} 
           value={form.name} 
@@ -354,7 +354,7 @@ export default function CustomersSetupScreen() {
 
       {/* CNIC */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>CNIC *</Text>
+        <Text style={styles.label}>CNIC <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.cnic && styles.inputError]} 
           value={form.cnic} 
@@ -399,6 +399,7 @@ export default function CustomersSetupScreen() {
         <TextInput 
           style={styles.input} 
           value={form.whatsapp} 
+          placeholder='+923001234567'
           onChangeText={(t) => handleChange('whatsapp', t)} 
         />
       </View>
@@ -423,7 +424,7 @@ export default function CustomersSetupScreen() {
         <Text style={styles.label}>Credit Balance</Text>
         <TextInput 
           style={[styles.input, formErrors.credit_balance && styles.inputError]} 
-          value={form.credit_balance} 
+          value={form.credit_balance || '0'} 
           keyboardType="numeric" 
           onChangeText={(text) => handleChange('credit_balance', text)} 
         />
@@ -435,7 +436,7 @@ export default function CustomersSetupScreen() {
         <Text style={styles.label}>Credit Limit</Text>
         <TextInput 
           style={[styles.input, formErrors.credit_limit && styles.inputError]} 
-          value={form.credit_limit} 
+          value={form.credit_limit || '0'} 
           keyboardType="numeric" 
           onChangeText={(text) => handleChange('credit_limit', text)} 
         />
@@ -469,10 +470,10 @@ export default function CustomersSetupScreen() {
 
       {/* Image Upload */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Upload Image</Text>
+        <Text style={styles.label}>Image</Text>
         <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
           <Ionicons name="image-outline" size={20} color="#007AFF" />
-          <Text style={styles.uploadButtonText}>Upload Image</Text>
+          <Text style={styles.uploadButtonText}>Select Image</Text>
         </TouchableOpacity>
 
         {imagePreview && (
@@ -498,9 +499,7 @@ export default function CustomersSetupScreen() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveButtonText}>
-            {id ? 'Update Customer' : 'Add Customer'}
-          </Text>
+          <Text style={styles.saveButtonText}>Save Changing</Text>
         )}
       </TouchableOpacity>
 

@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Modal
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ export default function ProductsViewScreen() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (token && id) {
@@ -78,6 +81,13 @@ export default function ProductsViewScreen() {
     return { status: 'In Stock', color: '#059669', bgColor: '#D1FAE5' };
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const calculateProfit = () => {
     if (!product?.sale_price || !product?.cost_price) return 0;
     return product.sale_price - product.cost_price;
@@ -107,10 +117,6 @@ export default function ProductsViewScreen() {
     );
   }
 
-  const imageUrl = product.images && product.images.image_name
-    ? `${IMAGE_URL}/products/${product.images.image_name}`
-    : null;
-
   const stockStatus = getStockStatus(product.stock);
   const profit = calculateProfit();
   const profitMargin = calculateProfitMargin();
@@ -139,14 +145,61 @@ export default function ProductsViewScreen() {
         {/* Product Hero Section */}
         <View style={styles.heroCard}>
           <View style={styles.imageContainer}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.productImage} />
+            {product.images && product.images.image_name ? (
+              <TouchableOpacity
+                onPress={() => {
+                  if (product.images.image_name) {
+                    setSelectedImage(`${IMAGE_URL}/products/${product.images.image_name}`);
+                  } else {
+                    setSelectedImage(null);
+                  }
+                  setModalVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: `${IMAGE_URL}/products/${product.images.image_name}` }}
+                  style={styles.productImage}
+                />
+              </TouchableOpacity>
             ) : (
               <View style={styles.imagePlaceholder}>
                 <Ionicons name="cube-outline" size={50} color="#9CA3AF" />
                 <Text style={styles.placeholderText}>No Image</Text>
               </View>
             )}
+
+            {/* Full Image Modal */}
+            <Modal
+              visible={modalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setModalVisible(false)}
+            >
+              <View style={styles.modalBackground}>
+                {/* ✅ Close Icon */}
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Ionicons name="close" size={28} color="#fff" />
+                </TouchableOpacity>
+
+                {/* ✅ Full Image */}
+                {selectedImage ? (
+                  <Image
+                    source={{ uri: selectedImage }}
+                    style={styles.fullImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Image
+                    source={require('../../../assets/images/placeholder.jpg')}
+                    style={styles.fullImage}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            </Modal>
           </View>
           
           <View style={styles.heroInfo}>
@@ -179,14 +232,14 @@ export default function ProductsViewScreen() {
           
           <View style={styles.statCard}>
             <MaterialCommunityIcons name="currency-usd" size={24} color="#10B981" />
-            <Text style={styles.statValue}>{settings.currency}{product.sale_price || '0.00'}</Text>
-            <Text style={styles.statLabel}>Sale Price   {settings.currency}</Text>
+            <Text style={styles.statValue}>{settings.currency}{formatCurrency(product.sale_price || '0.00')}</Text>
+            <Text style={styles.statLabel}>Sale Price {settings.currency}</Text>
           </View>
           
           <View style={styles.statCard}>
             <FontAwesome5 name="chart-line" size={20} color={profit >= 0 ? '#059669' : '#DC2626'} />
             <Text style={[styles.statValue, { color: profit >= 0 ? '#059669' : '#DC2626' }]}>
-              {settings.currency}{profit.toFixed(2)}
+              {settings.currency}{formatCurrency(profit)}
             </Text>
             <Text style={styles.statLabel}>Profit</Text>
           </View>
@@ -202,12 +255,12 @@ export default function ProductsViewScreen() {
           <View style={styles.pricingGrid}>
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Cost Price</Text>
-              <Text style={styles.costPrice}>{settings.currency}{product.cost_price || '0.00'}</Text>
+              <Text style={styles.costPrice}>{settings.currency}{formatCurrency(product.cost_price)}</Text>
             </View>
             
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Sale Price</Text>
-              <Text style={styles.salePrice}>{settings.currency}{product.sale_price || '0.00'}</Text>
+              <Text style={styles.salePrice}>{settings.currency}{formatCurrency(product.sale_price)}</Text>
             </View>
             
             <View style={styles.profitItem}>
@@ -446,15 +499,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   activeBadge: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#6B7280',
   },
   inactiveBadge: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FF3B30',
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#166534',
+    color: '#fff',
   },
   stockBadge: {
     paddingHorizontal: 12,
@@ -630,7 +683,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   primaryButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -644,5 +696,31 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
   },
 });

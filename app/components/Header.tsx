@@ -61,10 +61,6 @@ export default function Header() {
     fetchUser();
   }, [token]);
 
-  const imageUrl = currentUser?.images?.image_name
-    ? `${IMAGE_URL}/users/${currentUser.images.image_name}`
-    : null;
-
   // Generate PIN
   const generatePin = async () => {
     if (!token) return;
@@ -125,8 +121,11 @@ export default function Header() {
               {/* User Info */}
               <View style={styles.dropdownContent}>
                 <View style={styles.avatarWrapper}>
-                  {imageUrl ? (
-                    <Image source={{ uri: imageUrl }} style={styles.avatar} />
+                  {currentUser?.images?.image_name ? (
+                    <Image
+                      source={{ uri: `${IMAGE_URL}/users/${currentUser.images.image_name}` }}
+                      style={styles.avatar}
+                    />
                   ) : (
                     <View style={styles.avatarPlaceholder}>
                       <Ionicons name="person" size={40} color="#9CA3AF" />
@@ -135,10 +134,10 @@ export default function Header() {
                 </View>
 
                 <Text style={styles.dropdownText}>
-                  {loading ? 'Loading...' : currentUser?.full_name || 'User'}
+                  {loading ? 'Loading...' : currentUser?.full_name || ''}
                 </Text>
                 <Text style={styles.dropdownText}>
-                  {currentUser?.email || 'user@example.com'}
+                  {currentUser?.email || ''}
                 </Text>
 
                 {/* PIN display */}
@@ -167,17 +166,17 @@ export default function Header() {
               </View>
 
               {/* Dropdown Items */}
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => {router.push('/pages/profile');}}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => {router.push('/profile/profile');}}>
                 <Ionicons name="person-outline" size={18} color="#007AFF" style={styles.dropdownIcon} />
                 <Text style={styles.dropdownItemText}>Profile</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => {router.push('/pages/edit-profile');}}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => {router.push('/profile/edit-profile');}}>
                 <Ionicons name="create-outline" size={18} color="#007AFF" style={styles.dropdownIcon} />
                 <Text style={styles.dropdownItemText}>Edit Profile</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => {router.push('/pages/change-password');}}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => {router.push('/profile/change-password');}}>
                 <Ionicons name="lock-closed-outline" size={18} color="#007AFF" style={styles.dropdownIcon} />
                 <Text style={styles.dropdownItemText}>Change Password</Text>
               </TouchableOpacity>

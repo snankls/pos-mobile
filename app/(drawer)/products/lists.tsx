@@ -11,6 +11,7 @@ import {
   Image,
   Alert,
   ScrollView,
+  Modal
 } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
@@ -28,9 +29,9 @@ interface Product {
   brand_name: string;
   category_name: string;
   unit_name: string;
-  cost_price?: string;
-  sale_price?: string;
-  stocks?: string;
+  cost_price?: number;
+  sale_price?: number;
+  stocks?: number;
   image_url?: string;
   status: string;
   created_by?: string;
@@ -53,13 +54,17 @@ export default function ProductsListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [settings, setSettings] = useState<any>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortField, setSortField] = useState<keyof Product | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       fetchRecords();
+      fetchSettings();
     }, [token])
   );
 
@@ -94,6 +99,37 @@ export default function ProductsListsScreen() {
     setTotalPages(Math.ceil(filtered.length / perPage));
     updatePageRecords(filtered, 1, perPage);
     setPage(1);
+  };
+
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        console.log('Authentication Error', 'Please login again');
+      }
+    }
   };
 
   const fetchRecords = async () => {
@@ -178,6 +214,13 @@ export default function ProductsListsScreen() {
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const handleSort = (field: keyof Product) => {
     const newOrder = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
     setSortField(field);
@@ -207,7 +250,7 @@ export default function ProductsListsScreen() {
     sale_price: 150,
     stocks: 100,
     status: 100,
-    created_by: 130,
+    created_by: 120,
     actions: 150,
   };
 
@@ -295,7 +338,62 @@ export default function ProductsListsScreen() {
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.image }}>
-        <Image
+        <TouchableOpacity
+          onPress={() => {
+            if (item.image_url) {
+              setSelectedImage(`${IMAGE_URL}/products/${item.image_url}`);
+            } else {
+              setSelectedImage(null);
+            }
+            setModalVisible(true);
+          }}
+        >
+          <Image
+            source={
+              item.image_url
+                ? { uri: `${IMAGE_URL}/products/${item.image_url}` }
+                : require('../../../assets/images/placeholder.jpg')
+            }
+            style={styles.imageContainer}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+
+        {/* Full Image Modal */}
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBackground}>
+            {/* ✅ Close Icon */}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+
+            {/* ✅ Full Image */}
+            {selectedImage ? (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/placeholder.jpg')}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </Modal>
+
+
+        {/* <Image
           source={
             item.image_url
               ? { uri: `${IMAGE_URL}/products/${item.image_url}` }
@@ -303,7 +401,7 @@ export default function ProductsListsScreen() {
           }
           style={styles.imageContainer}
           resizeMode="cover"
-        />
+        /> */}
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.sku }}>
@@ -327,11 +425,11 @@ export default function ProductsListsScreen() {
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.cost_price }}>
-        <Text style={styles.cellText}>{item.cost_price}</Text>
+        <Text style={styles.cellText}>{settings.currency}{formatCurrency(item.cost_price ?? 0)}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.sale_price }}>
-        <Text style={styles.cellText}>{item.sale_price || '-'}</Text>
+        <Text style={styles.cellText}>{settings.currency}{formatCurrency(item.sale_price ?? 0)}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.stocks }}>
@@ -571,4 +669,30 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: '#FF3B30', textAlign: 'center', marginVertical: 10 },
   retryButton: { padding: 10, backgroundColor: '#007AFF', borderRadius: 6 },
   retryButtonText: { color: '#fff', fontWeight: 'bold' },
+
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
+  },
 });

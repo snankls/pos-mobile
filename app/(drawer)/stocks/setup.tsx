@@ -141,6 +141,38 @@ export default function StocksSetupScreen() {
     }));
   };
 
+  // Fetch settings from API
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        console.log('Authentication Error', 'Please login again');
+      }
+    }
+  };
+
   // Fetch initial data
   const fetchInitialData = async () => {
     try {
@@ -164,6 +196,10 @@ export default function StocksSetupScreen() {
       fetchInitialData();
     }
   }, [id]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [token]);
 
   // Update filtered products when products or search changes
   useEffect(() => {
@@ -262,7 +298,9 @@ export default function StocksSetupScreen() {
       setShowProductPickers(pickersArray);
 
       // Fetch products data
-      await fetchInitialData();
+      //await fetchInitialData();
+      await fetchProducts();
+      await fetchSettings();
 
     } catch (error: any) {
       console.error('Error fetching stock data:', error);
@@ -276,35 +314,6 @@ export default function StocksSetupScreen() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Fetch settings from API
-  const fetchSettings = async () => {
-    if (!token) return;
-
-    try {
-      const response = await axios.get(`${API_URL}/settings`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
-
-      const settingsData = response.data.data || response.data;
-      const settingsObj: Record<string, string> = {};
-
-      if (Array.isArray(settingsData)) {
-        settingsData.forEach((setting: any) => {
-          if (setting.data_name && setting.data_value !== undefined) {
-            settingsObj[setting.data_name] = setting.data_value;
-          }
-        });
-      }
-
-      setSettings(settingsObj);
-    } catch (error: any) {
-      console.error('Error fetching settings:', error);
     }
   };
 
@@ -506,11 +515,6 @@ export default function StocksSetupScreen() {
   };
 
   const handleSubmitConfirmed = async (isPost: boolean) => {
-    if (!validateForm()) {
-      Alert.alert('Validation Error', 'Please check all required fields');
-      return;
-    }
-
     setIsLoading(true);
     setGlobalErrorMessage('');
     setFormErrors({});
@@ -561,6 +565,13 @@ export default function StocksSetupScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   const getSelectedProductName = (productId: string) => {
@@ -703,10 +714,7 @@ export default function StocksSetupScreen() {
 
         {/* Stock Number */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            Stock Number <Text style={styles.required}>*</Text>
-          </Text>
-
+          <Text style={styles.label}>Stock Number <Text style={styles.errorText}>*</Text></Text>
           <TextInput
             style={[styles.input, formErrors.stock_number && styles.inputError]}
             value={currentRecord.stock_number}
@@ -723,7 +731,7 @@ export default function StocksSetupScreen() {
 
         {/* Stock Date */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Stock Date <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Stock Date <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.stock_date && styles.inputError]}
             onPress={() => setShowDatePicker(true)}
@@ -739,10 +747,7 @@ export default function StocksSetupScreen() {
 
         {/* Status */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            Status <Text style={styles.required}>*</Text>
-          </Text>
-
+          <Text style={styles.label}>Status <Text style={styles.errorText}>*</Text></Text>
           {currentRecord.status === 'Posted' ? (
             <View
               style={[
@@ -838,7 +843,7 @@ export default function StocksSetupScreen() {
               </View>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Price</Text>
-                <Text style={styles.totalValue}>{settings.currency || '$'}{totalPrice.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>{settings.currency}{formatCurrency(totalPrice)}</Text>
               </View>
             </View>
           </View>

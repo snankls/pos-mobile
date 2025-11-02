@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -30,6 +31,9 @@ export default function ChangePasswordScreen() {
   // ✅ Separate loading states
   const [screenLoading, setScreenLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
@@ -117,51 +121,104 @@ export default function ChangePasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Change Password</Text>
 
         {/* Old Password */}
-        <Text style={styles.label}>Old Password *</Text>
-        <TextInput
-          style={[styles.input, formErrors.old_password && styles.inputError]}
-          secureTextEntry
-          value={form.old_password}
-          onChangeText={(text) => handleChange('old_password', text)}
-        />
-        {formErrors.old_password && (
-          <Text style={styles.errorText}>{formErrors.old_password[0]}</Text>
-        )}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Old Password *</Text>
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              style={[
+                styles.input,
+                formErrors.old_password && styles.inputError,
+                { paddingRight: 40 },
+              ]}
+              secureTextEntry={!showOldPassword}
+              value={form.old_password}
+              onChangeText={(text) => handleChange('old_password', text)}
+            />
+            <TouchableOpacity
+              onPress={() => setShowOldPassword(!showOldPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={showOldPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#555"
+              />
+            </TouchableOpacity>
+          </View>
+          {formErrors.old_password && (
+            <Text style={styles.errorText}>{formErrors.old_password[0]}</Text>
+          )}
+        </View>
 
         {/* New Password */}
-        <Text style={styles.label}>New Password *</Text>
-        <TextInput
-          style={[styles.input, formErrors.new_password && styles.inputError]}
-          secureTextEntry
-          value={form.new_password}
-          onChangeText={(text) => handleChange('new_password', text)}
-        />
-        {formErrors.new_password && (
-          <Text style={styles.errorText}>{formErrors.new_password[0]}</Text>
-        )}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>New Password *</Text>
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              style={[
+                styles.input,
+                formErrors.new_password && styles.inputError,
+                { paddingRight: 40 },
+              ]}
+              secureTextEntry={!showNewPassword}
+              value={form.new_password}
+              onChangeText={(text) => handleChange('new_password', text)}
+            />
+            <TouchableOpacity
+              onPress={() => setShowNewPassword(!showNewPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={showNewPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#555"
+              />
+            </TouchableOpacity>
+          </View>
+          {formErrors.new_password && (
+            <Text style={styles.errorText}>{formErrors.new_password[0]}</Text>
+          )}
+        </View>
 
         {/* Confirm Password */}
-        <Text style={styles.label}>Confirm Password *</Text>
-        <TextInput
-          style={[
-            styles.input,
-            formErrors.new_password_confirmation && styles.inputError,
-          ]}
-          secureTextEntry
-          value={form.new_password_confirmation}
-          onChangeText={(text) => handleChange('new_password_confirmation', text)}
-        />
-        {formErrors.new_password_confirmation && (
-          <Text style={styles.errorText}>
-            {formErrors.new_password_confirmation[0]}
-          </Text>
-        )}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Confirm Password *</Text>
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              style={[
+                styles.input,
+                formErrors.new_password_confirmation && styles.inputError,
+                { paddingRight: 40 },
+              ]}
+              secureTextEntry={!showConfirmPassword}
+              value={form.new_password_confirmation}
+              onChangeText={(text) =>
+                handleChange('new_password_confirmation', text)
+              }
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={showConfirmPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#555"
+              />
+            </TouchableOpacity>
+          </View>
+          {formErrors.new_password_confirmation && (
+            <Text style={styles.errorText}>
+              {formErrors.new_password_confirmation[0]}
+            </Text>
+          )}
+        </View>
 
         {/* Submit */}
         <TouchableOpacity
@@ -195,6 +252,7 @@ export default function ChangePasswordScreen() {
 const styles = StyleSheet.create({
   container: { padding: 16, flexGrow: 1, backgroundColor: '#fff' },
   title: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 20 },
+  fieldGroup: { marginBottom: 10 },
   label: { fontSize: 15, fontWeight: '500', marginTop: 10 },
   input: {
     borderWidth: 1,
@@ -207,6 +265,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   inputError: { borderColor: '#FF3B30' },
+  eyeIcon: {
+    position: 'absolute',
+    right: 10,
+    top: '50%',
+    transform: [{ translateY: -11 }],
+  },
   errorText: { color: '#FF3B30', fontSize: 13, marginTop: 4 },
   saveButton: {
     backgroundColor: '#007AFF',

@@ -64,18 +64,17 @@ export default function UserProfileScreen() {
     );
   }
 
-  const imageUrl = user?.images?.image_name
-    ? `${IMAGE_URL}/users/${user.images.image_name}`
-    : null;
-
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Profile Hero Section */}
         <View style={styles.heroCard}>
           <View style={styles.avatarContainer}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.avatar} />
+            {user?.images?.image_name ? (
+              <Image
+                source={{ uri: `${IMAGE_URL}/users/${user.images.image_name}` }}
+                style={styles.avatar}
+              />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Ionicons name="person" size={40} color="#9CA3AF" />
@@ -94,7 +93,7 @@ export default function UserProfileScreen() {
             <Text style={styles.userEmail}>{user.email}</Text>
             
             <View style={styles.companyBadge}>
-              <Ionicons name="business-outline" size={16} color="#6366F1" />
+              <Ionicons name="business-outline" size={16} color="#007AFF" />
               <Text style={styles.companyText}>{user.company_name}</Text>
             </View>
           </View>
@@ -147,7 +146,7 @@ export default function UserProfileScreen() {
             <DetailItem 
               icon="call-outline" 
               label="Phone" 
-              value={user.phone_number || 'Not provided'} 
+              value={user.phone_number || '-'} 
             />
             <DetailItem 
               icon="location-outline" 
@@ -169,7 +168,7 @@ export default function UserProfileScreen() {
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/pages/edit-profile')}
+            onPress={() => router.push('/profile/edit-profile')}
           >
             <Ionicons name="person-outline" size={18} color="#007AFF" />
             <Text style={styles.secondaryButtonText}>Edit Profile</Text>
@@ -177,7 +176,7 @@ export default function UserProfileScreen() {
           
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.push('/pages/change-password')}
+            onPress={() => router.push('/profile/change-password')}
           >
             <Ionicons name="lock-closed-outline" size={18} color="#fff" />
             <Text style={styles.buttonText}>Change Password</Text>
@@ -197,7 +196,7 @@ const DetailItem = ({ icon, label, value, multiline = false }: any) => (
     <View style={styles.detailContent}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={[styles.detailValue, multiline && { flexWrap: 'wrap' }]} numberOfLines={multiline ? 3 : 1}>
-        {value || 'Not provided'}
+        {value || '-'}
       </Text>
     </View>
   </View>
@@ -282,7 +281,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   activeBadge: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#6B7280',
   },
   inactiveBadge: {
     backgroundColor: '#F3F4F6',
@@ -290,7 +289,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#166534',
+    color: '#fff',
   },
   profileInfo: {
     alignItems: 'center',
@@ -304,7 +303,7 @@ const styles = StyleSheet.create({
   },
   userUsername: {
     fontSize: 16,
-    color: '#6366F1',
+    color: '#007AFF',
     fontWeight: '600',
     marginBottom: 2,
   },
@@ -324,7 +323,7 @@ const styles = StyleSheet.create({
   },
   companyText: {
     fontSize: 12,
-    color: '#6366F1',
+    color: '#007AFF',
     fontWeight: '600',
   },
   section: {
@@ -416,7 +415,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366F1',
+    backgroundColor: '#007AFF',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -438,11 +437,11 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
   },
   secondaryButtonText: {
-    color: '#6366F1',
+    color: '#007AFF',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
   },
 });

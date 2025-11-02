@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, usePathname } from 'expo-router';
+import { router } from 'expo-router';
 
 interface User {
   id: number;
@@ -19,7 +19,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, userData: User) => Promise<void>;
   logout: () => Promise<void>;
-  initialized: boolean;
+  isLoading: boolean;
   checkTokenExpiry: () => Promise<boolean>;
   refreshAuthData: () => Promise<void>;
 }
@@ -31,8 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
-  const pathname = usePathname();
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadUser = async (storedToken: string) => {
     try {
@@ -43,15 +42,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem('userData', JSON.stringify(res.data));
     } catch (error) {
       console.log('Error loading user:', error);
+      // If API call fails, token might be invalid
+      await logout();
     }
   };
 
   const isTokenExpired = (token: string): boolean => {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      
+      const payload = JSON.parse(atob(parts[1]));
       const currentTime = Date.now() / 1000;
-      return payload.exp < currentTime - 300;
-    } catch {
+      
+      // Check if token is expired (with 5 minute buffer)
+      return payload.exp < currentTime + 300;
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
       return true;
     }
   };
@@ -65,75 +72,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  // Initial auth check on app load
   useEffect(() => {
-    const loadAuthState = async () => {
-      try {
-        const [storedToken, storedUser] = await Promise.all([
-          AsyncStorage.getItem('authToken'),
-          AsyncStorage.getItem('userData'),
-        ]);
-
-        const isAuthRoute =
-          pathname?.startsWith('/auth') || pathname === '/' || pathname === '/';
-
-        if (storedToken && !isTokenExpired(storedToken)) {
-          setToken(storedToken);
-          if (storedUser) setUser(JSON.parse(storedUser));
-          await loadUser(storedToken);
-
-          // ✅ Redirect to dashboard only from login or root
-          if (pathname === '/auth/login' || pathname === '/') {
-            router.replace('/(drawer)/dashboard');
-          }
-        } else {
-          // ✅ Only redirect to login if not already on an auth route
-          await AsyncStorage.removeItem('authToken');
-          await AsyncStorage.removeItem('userData');
-          setToken(null);
-          setUser(null);
-
-          if (!isAuthRoute) {
-            router.replace('/auth/login');
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load auth state', error);
-        if (!pathname?.startsWith('/auth')) {
-          router.replace('/auth/login');
-        }
-      } finally {
-        setInitialized(true);
-      }
-    };
-
     loadAuthState();
-  }, [pathname]);
+  }, []);
 
-  const login = async (token: string, userData: User) => {
-    await Promise.all([
-      AsyncStorage.setItem('authToken', token),
-      AsyncStorage.setItem('userData', JSON.stringify(userData)),
-    ]);
-    setToken(token);
-    setUser(userData);
-    router.replace('/(drawer)/dashboard');
+  const loadAuthState = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('authToken');
+      const storedUser = await AsyncStorage.getItem('userData');
+
+      if (storedToken) {
+        // Check if token is expired
+        if (isTokenExpired(storedToken)) {
+          console.log('Token expired on app load');
+          await clearAuth();
+        } else {
+          // Token is valid
+          setToken(storedToken);
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+          // Refresh user data from API in background
+          loadUser(storedToken).catch(console.error);
+        }
+      } else {
+        // No token found
+        await clearAuth();
+      }
+    } catch (error) {
+      console.error('Failed to load auth state', error);
+      await clearAuth();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearAuth = async () => {
+    try {
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('userData');
+      setToken(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Error clearing auth:', error);
+    }
+  };
+
+  const login = async (newToken: string, userData: User) => {
+    try {
+      await AsyncStorage.setItem('authToken', newToken);
+      await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      setToken(newToken);
+      setUser(userData);
+      router.replace('/(drawer)/dashboard');
+    } catch (error) {
+      console.error('Error during login:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await Promise.all([
-      AsyncStorage.removeItem('authToken'),
-      AsyncStorage.removeItem('userData'),
-    ]);
-    setToken(null);
-    setUser(null);
-    if (pathname !== '/auth/login') router.replace('/auth/login');
+    await clearAuth();
+    router.replace('/auth/login');
   };
 
-  // 🆕 Added refreshAuthData for GlobalRefresh
   const refreshAuthData = async () => {
     const storedToken = await AsyncStorage.getItem('authToken');
-    if (storedToken) {
+    if (storedToken && !isTokenExpired(storedToken)) {
       await loadUser(storedToken);
+    } else {
+      await logout();
     }
   };
 
@@ -144,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         login,
         logout,
-        initialized,
+        isLoading,
         checkTokenExpiry,
         refreshAuthData,
       }}

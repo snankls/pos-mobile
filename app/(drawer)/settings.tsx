@@ -100,7 +100,6 @@ export default function SettingsScreen() {
 
       setSuccessMessage('Settings updated successfully.');
     } catch (err: any) {
-      console.error('Update error:', err.response?.data || err.message);
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors || {});
       } else {
@@ -118,7 +117,7 @@ export default function SettingsScreen() {
     >
       <View style={styles.container}>
         {/* Invoice Prefix */}
-        <Text style={styles.label}>Invoice Number Prefix *</Text>
+        <Text style={styles.label}>Invoice Number Prefix <Text style={styles.errorText}>*</Text></Text>
         <TextInput
           style={styles.input}
           value={form.invoice_prefix}
@@ -127,7 +126,7 @@ export default function SettingsScreen() {
         {errors.invoice_prefix && <Text style={styles.error}>{errors.invoice_prefix[0]}</Text>}
 
         {/* Invoice Count */}
-        <Text style={styles.label}>Invoice Number Total *</Text>
+        <Text style={styles.label}>Invoice Number Limit <Text style={styles.errorText}>*</Text></Text>
         <TextInput
           style={styles.input}
           value={form.invoice_limit}
@@ -136,8 +135,8 @@ export default function SettingsScreen() {
         />
         {errors.invoice_limit && <Text style={styles.error}>{errors.invoice_limit[0]}</Text>}
 
-        {/* Currency Sign */}
-        <Text style={styles.label}>Currency Sign *</Text>
+        {/* Currency */}
+        <Text style={styles.label}>Currency <Text style={styles.errorText}>*</Text></Text>
         <TextInput
           style={styles.input}
           value={form.currency}
@@ -155,7 +154,6 @@ export default function SettingsScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Ionicons name="save-outline" size={18} color="#fff" />
               <Text style={styles.buttonText}>Save Changes</Text>
             </>
           )}
@@ -195,10 +193,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   error: { color: 'red', marginTop: 4 },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007AFF',
     padding: 12,
     borderRadius: 6,
     justifyContent: 'center',

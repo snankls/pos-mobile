@@ -53,6 +53,8 @@ export default function BrandsScreen() {
   const [validationError, setValidationError] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortField, setSortField] = useState<keyof Brand | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Modal & editing states
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -160,12 +162,6 @@ export default function BrandsScreen() {
     try {
       setUpdating(true);
       setValidationError('');
-
-      if (!editName.trim()) {
-        setValidationError('Please enter a name.');
-        setUpdating(false);
-        return;
-      }
 
       const formData = new FormData();
       formData.append('name', editName.trim());
@@ -388,7 +384,61 @@ export default function BrandsScreen() {
       <View style={{ width: COLUMN_WIDTHS.id }}><Text style={styles.cellText}>{item.id}</Text></View>
       
       <View style={{ width: COLUMN_WIDTHS.image }}>
-        <Image
+        <TouchableOpacity
+          onPress={() => {
+            if (item.image_url) {
+              setSelectedImage(`${IMAGE_URL}/brands/${item.image_url}`);
+            } else {
+              setSelectedImage(null);
+            }
+            setModalVisible(true);
+          }}
+        >
+          <Image
+            source={
+              item.image_url
+                ? { uri: `${IMAGE_URL}/brands/${item.image_url}` }
+                : require('../../../assets/images/placeholder.jpg')
+            }
+            style={styles.imageContainer}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+
+        {/* Full Image Modal */}
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBackground}>
+            {/* ✅ Close Icon */}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+
+            {/* ✅ Full Image */}
+            {selectedImage ? (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/placeholder.jpg')}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </Modal>
+        
+        {/* <Image
           source={
             item.image_url
               ? { uri: `${IMAGE_URL}/brands/${item.image_url}` }
@@ -396,7 +446,7 @@ export default function BrandsScreen() {
           }
           style={styles.imageContainer}
           resizeMode="cover"
-        />
+        /> */}
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.name }}><Text style={[styles.cellText]}>{item.name}</Text></View>
@@ -523,7 +573,7 @@ export default function BrandsScreen() {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Name *</Text>
+                <Text style={styles.fieldLabel}>Name <Text style={styles.errorText}>*</Text></Text>
                 <TextInput
                   style={[styles.input, validationError && styles.inputError]}
                   value={editName}
@@ -534,7 +584,7 @@ export default function BrandsScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Status *</Text>
+                <Text style={styles.fieldLabel}>Status <Text style={styles.errorText}>*</Text></Text>
                 <TouchableOpacity 
                   style={styles.modalTrigger}
                   onPress={() => setStatusModalVisible(true)}
@@ -550,9 +600,7 @@ export default function BrandsScreen() {
                 <Text style={styles.fieldLabel}>Image</Text>
                 <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
                   <Ionicons name="image-outline" size={20} color="#007AFF" />
-                  <Text style={styles.uploadButtonText}>
-                    {editImage ? 'Change Image' : 'Upload Image'}
-                  </Text>
+                  <Text style={styles.uploadButtonText}>Select Image</Text>
                 </TouchableOpacity>
 
                 {editImage && (
@@ -572,9 +620,7 @@ export default function BrandsScreen() {
                 {updating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>
-                    {isEditing ? 'Update Brand' : 'Add Brand'}
-                  </Text>
+                  <Text style={styles.saveButtonText}>Save Changing</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -722,7 +768,11 @@ const styles = StyleSheet.create({
   
   // Error Styles
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: { color: '#FF3B30', fontSize: 16, textAlign: 'center', marginVertical: 12 },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
   retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   retryButtonText: { color: '#fff', fontWeight: '600' },
   
@@ -906,5 +956,31 @@ const styles = StyleSheet.create({
   modalItemText: {
     fontSize: 16,
     color: '#1C1C1E',
+  },
+
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
   },
 });

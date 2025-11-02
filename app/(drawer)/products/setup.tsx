@@ -309,9 +309,10 @@ export default function ProductsSetupScreen() {
       setImageFile({
         uri: image.uri,
         name: image.uri.split('/').pop(),
-        type: 'image/jpeg',
+        type: image.type ? `image/${image.type}` : 'image/jpeg',
       });
       setImagePreview(image.uri);
+      setIsImageDeleted(false);
     }
   };
 
@@ -326,13 +327,6 @@ export default function ProductsSetupScreen() {
       setLoading(true);
       setGlobalError('');
       setFormErrors({});
-
-      // Validation - check if required fields are filled
-      if (!form.name) {
-        setFormErrors({ name: ['Product name is required'] });
-        setLoading(false);
-        return;
-      }
 
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
@@ -368,6 +362,9 @@ export default function ProductsSetupScreen() {
 
       if (response.status === 200 || response.status === 201) {
         resetForm();
+        setImagePreview(null);
+        setImageFile(null);
+        setIsImageDeleted(false);
         router.push('/(drawer)/products/lists');
       } else {
         setGlobalError(response.data.message || 'Unexpected response from server.');
@@ -442,7 +439,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>SKU</Text>
+        <Text style={styles.label}>SKU <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.sku && styles.inputError]} 
           value={form.sku} 
@@ -452,7 +449,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Product Name *</Text>
+        <Text style={styles.label}>Product Name <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.name && styles.inputError]} 
           value={form.name} 
@@ -462,21 +459,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Category</Text>
-        <TouchableOpacity 
-          style={[styles.modalTrigger, formErrors.category_id && styles.inputError]}
-          onPress={() => openModal('category')}
-        >
-          <Text style={form.category_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
-            {getSelectedCategoryName()}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color="#6B7280" />
-        </TouchableOpacity>
-        {formErrors.category_id && <Text style={styles.errorText}>{formErrors.category_id[0]}</Text>}
-      </View>
-
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Brand</Text>
+        <Text style={styles.label}>Brand <Text style={styles.errorText}>*</Text></Text>
         <TouchableOpacity 
           style={[styles.modalTrigger, formErrors.brand_id && styles.inputError]}
           onPress={() => openModal('brand')}
@@ -490,7 +473,21 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Unit</Text>
+        <Text style={styles.label}>Category <Text style={styles.errorText}>*</Text></Text>
+        <TouchableOpacity 
+          style={[styles.modalTrigger, formErrors.category_id && styles.inputError]}
+          onPress={() => openModal('category')}
+        >
+          <Text style={form.category_id ? styles.modalTriggerText : styles.modalTriggerPlaceholder}>
+            {getSelectedCategoryName()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {formErrors.category_id && <Text style={styles.errorText}>{formErrors.category_id[0]}</Text>}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Unit <Text style={styles.errorText}>*</Text></Text>
         <TouchableOpacity 
           style={[styles.modalTrigger, formErrors.unit_id && styles.inputError]}
           onPress={() => openModal('unit')}
@@ -504,7 +501,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Cost Price</Text>
+        <Text style={styles.label}>Cost Price <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.cost_price && styles.inputError]} 
           keyboardType="numeric" 
@@ -515,7 +512,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Sale Price</Text>
+        <Text style={styles.label}>Sale Price <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.sale_price && styles.inputError]} 
           keyboardType="numeric" 
@@ -526,7 +523,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Stock</Text>
+        <Text style={styles.label}>Stock <Text style={styles.errorText}>*</Text></Text>
         <TextInput 
           style={[styles.input, formErrors.stock && styles.inputError]} 
           keyboardType="numeric" 
@@ -549,7 +546,7 @@ export default function ProductsSetupScreen() {
 
       {/* Status - Modal Version */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Status</Text>
+        <Text style={styles.label}>Status <Text style={styles.errorText}>*</Text></Text>
         <TouchableOpacity 
           style={styles.modalTrigger}
           onPress={() => setStatusModalVisible(true)}
@@ -562,10 +559,10 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Upload Image</Text>
+        <Text style={styles.label}>Image</Text>
         <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
           <Ionicons name="image-outline" size={20} color="#007AFF" />
-          <Text style={styles.uploadButtonText}>Upload Image</Text>
+          <Text style={styles.uploadButtonText}>Select Image</Text>
         </TouchableOpacity>
 
         {imagePreview && (
@@ -579,7 +576,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <TouchableOpacity onPress={handleSubmit} style={styles.saveButton} disabled={loading}>
-        <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Product'}</Text>
+        <Text style={styles.saveButtonText}>Save Changing</Text>
       </TouchableOpacity>
 
       {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}

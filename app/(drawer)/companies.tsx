@@ -168,7 +168,6 @@ export default function CompaniesScreen() {
       }, 3000);
 
     } catch (error: any) {
-      console.error('Update error:', error.response?.data || error.message);
       if (error.response?.status === 422) {
         setFormErrors(error.response.data.errors || {});
       } else {
@@ -191,7 +190,7 @@ export default function CompaniesScreen() {
 
       {/* Company Name */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Company Name *</Text>
+        <Text style={styles.label}>Company Name <Text style={styles.errorText}>*</Text></Text>
         <TextInput
           style={[styles.input, formErrors.name && styles.inputError]}
           value={company.name || ''}
@@ -216,7 +215,7 @@ export default function CompaniesScreen() {
 
       {/* Image Upload */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Company Image</Text>
+        <Text style={styles.label}>Image <Text style={styles.errorText}>*</Text></Text>
         <TouchableOpacity 
           style={styles.uploadButton} 
           onPress={handleFileSelected}
@@ -225,6 +224,9 @@ export default function CompaniesScreen() {
           <Ionicons name="image-outline" size={20} color="#007AFF" />
           <Text style={styles.uploadButtonText}>Select Image</Text>
         </TouchableOpacity>
+        {formErrors.company_image && (
+          <Text style={styles.errorText}>{formErrors.company_image[0]}</Text>
+        )}
 
         {imagePreview && (
           <View style={styles.imageContainer}>

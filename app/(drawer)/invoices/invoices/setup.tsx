@@ -149,7 +149,6 @@ export default function InvoicesSetupScreen() {
       await Promise.all([fetchCustomers(), fetchProducts()]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
-      console.log('Error', 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -392,7 +391,7 @@ export default function InvoicesSetupScreen() {
       const transformedProducts = res.data.map((product: Product) => ({
         ...product,
         id: product.id.toString(), // Convert to string
-        product_label: `${product.name} (${product.sku}) - ${settings.currency || '$'} ${product.sale_price}`,
+        product_label: `${product.name} (${product.sku}) - ${settings.currency}${product.sale_price}`,
         price: product.sale_price
       }));
       
@@ -434,6 +433,13 @@ export default function InvoicesSetupScreen() {
     setCurrentRecord(prev => ({ ...prev, status: statusKey }));
     setShowStatusPicker(false);
     clearError('status');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   // Product selection for specific row
@@ -581,46 +587,8 @@ export default function InvoicesSetupScreen() {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
   };
 
-  // Form validation
-  const validateForm = (): boolean => {
-    const errors: any = {};
-
-    if (!currentRecord.customer_id) {
-      errors.customer_id = ['Customer is required'];
-    }
-
-    if (!currentRecord.invoice_date) {
-      errors.invoice_date = ['Invoice date is required'];
-    }
-
-    if (!currentRecord.status) {
-      errors.status = ['Status is required'];
-    }
-
-    if (itemsList.length === 0) {
-      errors.items = ['At least one item is required'];
-    } else {
-      itemsList.forEach((item, index) => {
-        if (!item.product_id) {
-          errors[`items[${index}].product_id`] = ['Product is required'];
-        }
-        if (!item.quantity || parseFloat(item.quantity) <= 0) {
-          errors[`items[${index}].quantity`] = ['Valid quantity is required'];
-        }
-      });
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   // Form submission
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      // Validation errors are already set in formErrors state
-      return;
-    }
-
     setIsLoading(true);
     setGlobalErrorMessage('');
     setFormErrors({});
@@ -810,7 +778,7 @@ export default function InvoicesSetupScreen() {
                           {product.name}
                         </Text>
                         <Text style={styles.productDetails}>
-                          SKU: {product.sku} • Price: {settings.currency} {product.sale_price}
+                          SKU: {product.sku} • Price: {settings.currency}{product.sale_price}
                         </Text>
                         <Text style={styles.productUnit}>
                           Unit: {product.unit_name}
@@ -968,14 +936,14 @@ export default function InvoicesSetupScreen() {
         {/* Price */}
         <View style={[styles.cell, styles.cellPrice]}>
           <Text style={styles.priceText} numberOfLines={1}>
-            {settings.currency} {item.price || '0'}
+            {settings.currency}{item.price || '0'}
           </Text>
         </View>
 
         {/* Total */}
         <View style={[styles.cell, styles.cellTotal]}>
           <Text style={styles.totalText} numberOfLines={1}>
-            {settings.currency} {item.total_amount || '0'}
+            {settings.currency}{item.total_amount || '0'}
           </Text>
         </View>
 
@@ -1009,7 +977,7 @@ export default function InvoicesSetupScreen() {
 
         {/* Customer Selection */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Customer <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Customer <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.customer_id && styles.inputError]}
             onPress={() => setShowCustomerPicker(true)}
@@ -1027,7 +995,7 @@ export default function InvoicesSetupScreen() {
 
         {/* Invoice Date */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Invoice Date <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Invoice Date <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.invoice_date && styles.inputError]}
             onPress={() => setShowDatePicker(true)}
@@ -1043,7 +1011,7 @@ export default function InvoicesSetupScreen() {
 
         {/* Status */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Status <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>Status <Text style={styles.errorText}>*</Text></Text>
           <TouchableOpacity
             style={[styles.modalTrigger, formErrors.status && styles.inputError]}
             onPress={() => setShowStatusPicker(true)}
@@ -1143,15 +1111,15 @@ export default function InvoicesSetupScreen() {
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Price</Text>
-              <Text style={styles.totalValue}>{settings.currency} {totalPrice.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{settings.currency}{formatCurrency(totalPrice)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Discount</Text>
-              <Text style={styles.totalValue}>{settings.currency} {totalDiscount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{settings.currency}{formatCurrency(totalDiscount)}</Text>
             </View>
             <View style={[styles.totalRow, styles.grandTotal]}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalValue}>{settings.currency} {grandTotal.toFixed(2)}</Text>
+              <Text style={styles.grandTotalValue}>{settings.currency}{formatCurrency(grandTotal)}</Text>
             </View>
           </View>
         )}
@@ -1165,9 +1133,7 @@ export default function InvoicesSetupScreen() {
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>
-              {isEditMode ? 'Update Invoice' : 'Save Invoice'}
-            </Text>
+            <Text style={styles.saveButtonText}>Save Changing</Text>
           )}
         </TouchableOpacity>
 
@@ -1362,9 +1328,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
-  },
-  required: {
-    color: 'red',
   },
   modalTrigger: {
     flexDirection: 'row',

@@ -84,6 +84,32 @@ export default function BanksScreen() {
 
   useEffect(() => {
     fetchRecords();
+  }, []);
+
+  const fetchStatus = async () => {
+    if (!token) return logout();
+
+    try {
+      const res = await axios.get(`${API_URL}/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.data && typeof res.data.data === 'object') {
+        const statusData = res.data.data;
+        const statusArray = Object.entries(statusData).map(([key, value]) => ({
+          id: key,
+          key: key,
+          value: value
+        }));
+        setStatusOptions(statusArray);
+      }
+    } catch (err: any) {
+      console.error('Fetch status error:', err);
+      if (err.response?.status === 401) logout();
+    }
+  };
+
+  useEffect(() => {
     fetchStatus();
   }, []);
 
@@ -153,29 +179,6 @@ export default function BanksScreen() {
     setPage(1);
   };
 
-  const fetchStatus = async () => {
-    if (!token) return logout();
-
-    try {
-      const res = await axios.get(`${API_URL}/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.data.data && typeof res.data.data === 'object') {
-        const statusData = res.data.data;
-        const statusArray = Object.entries(statusData).map(([key, value]) => ({
-          id: key,
-          key: key,
-          value: value
-        }));
-        setStatusOptions(statusArray);
-      }
-    } catch (err: any) {
-      console.error('Fetch status error:', err);
-      if (err.response?.status === 401) logout();
-    }
-  };
-
   const updatePageRecords = (all: Bank[], currentPage: number, perPageCount: number) => {
     const startIndex = (currentPage - 1) * perPageCount;
     const endIndex = startIndex + perPageCount;
@@ -230,19 +233,7 @@ export default function BanksScreen() {
     }
   };
 
-  const validateForm = (): boolean => {
-    const errors: Partial<Record<keyof Bank, string>> = {};
-    if (!formData.account_title?.trim()) errors.account_title = 'Please enter account title.';
-    if (!formData.bank_name?.trim()) errors.bank_name = 'Please enter bank name.';
-    if (!formData.account_number?.trim()) errors.account_number = 'Please enter account number.';
-
-    setValidationError(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   const saveRecord = async () => {
-    if (!validateForm()) return;
-
     try {
       setUpdating(true);
       setValidationError({});
@@ -268,9 +259,22 @@ export default function BanksScreen() {
       } else {
         Alert.alert('Error', message || 'Something went wrong.');
       }
+
     } catch (err: any) {
       console.error('Save record error:', err.response?.data || err.message);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to save record.');
+
+      // ✅ Validation error handling
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        const apiErrors = err.response.data.errors;
+        const formattedErrors: any = {};
+        Object.keys(apiErrors).forEach((key) => {
+          const value = apiErrors[key];
+          formattedErrors[key] = Array.isArray(value) ? value[0] : value;
+        });
+        setValidationError(formattedErrors);
+      } else {
+        Alert.alert('Error', err.response?.data?.message || 'Failed to save record.');
+      }
     } finally {
       setUpdating(false);
     }
@@ -518,7 +522,7 @@ export default function BanksScreen() {
             >
               {/* Required Fields */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Account Title *</Text>
+                <Text style={styles.fieldLabel}>Account Title <Text style={styles.errorText}>*</Text></Text>
                 <TextInput
                   style={[styles.input, validationError.account_title && styles.inputError]}
                   value={formData.account_title}
@@ -528,7 +532,7 @@ export default function BanksScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Bank Name *</Text>
+                <Text style={styles.fieldLabel}>Bank Name <Text style={styles.errorText}>*</Text></Text>
                 <TextInput
                   style={[styles.input, validationError.bank_name && styles.inputError]}
                   value={formData.bank_name}
@@ -538,7 +542,7 @@ export default function BanksScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Account Number *</Text>
+                <Text style={styles.fieldLabel}>Account Number <Text style={styles.errorText}>*</Text></Text>
                 <TextInput
                   style={[styles.input, validationError.account_number && styles.inputError]}
                   value={formData.account_number}
@@ -579,7 +583,7 @@ export default function BanksScreen() {
 
               {/* Status Field with Modal */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Status *</Text>
+                <Text style={styles.fieldLabel}>Status <Text style={styles.errorText}>*</Text></Text>
                 <TouchableOpacity 
                   style={styles.modalTrigger}
                   onPress={() => setStatusModalVisible(true)}
@@ -589,6 +593,7 @@ export default function BanksScreen() {
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#6B7280" />
                 </TouchableOpacity>
+                {validationError.status && <Text style={styles.errorText}>{validationError.status}</Text>}
               </View>
 
               <TouchableOpacity
@@ -733,7 +738,11 @@ const styles = StyleSheet.create({
   
   // Error Styles
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: { color: '#FF3B30', fontSize: 16, textAlign: 'center', marginVertical: 12 },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
   retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   retryButtonText: { color: '#fff', fontWeight: '600' },
   

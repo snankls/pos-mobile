@@ -24,7 +24,7 @@ interface Stock {
   stock_number?: string;
   stock_date: string;
   total_stock: string;
-  total_price: string;
+  total_price: number;
   status: string;
   created_by?: string;
   created_at?: string;
@@ -45,6 +45,7 @@ export default function StocksListsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [settings, setSettings] = useState<any>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortField, setSortField] = useState<keyof Stock | null>(null);
@@ -52,6 +53,7 @@ export default function StocksListsScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchRecords();
+      fetchSettings();
     }, [token])
   );
 
@@ -70,6 +72,37 @@ export default function StocksListsScreen() {
     setTotalPages(Math.ceil(filtered.length / perPage));
     updatePageRecords(filtered, 1, perPage);
     setPage(1);
+  };
+
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        console.log('Authentication Error', 'Please login again');
+      }
+    }
   };
 
   const fetchRecords = async () => {
@@ -154,6 +187,13 @@ export default function StocksListsScreen() {
 
   const getStatusText = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const handleSort = (field: keyof Stock) => {
     // If clicking the same column, toggle asc/desc
     const newOrder =
@@ -183,7 +223,7 @@ export default function StocksListsScreen() {
     total_stock: 120,
     total_price: 150,
     status: 100,
-    created_by: 100,
+    created_by: 120,
     actions: 150,
   };
 
@@ -275,7 +315,7 @@ export default function StocksListsScreen() {
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.total_price }}>
-        <Text style={styles.cellText}>{item.total_price}</Text>
+        <Text style={styles.cellText}>{settings.currency}{formatCurrency(item.total_price ?? 0)}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.status }}>

@@ -180,7 +180,7 @@ export default function DrawerContent(props: DrawerContentProps) {
           <Ionicons
             name={item.icon as any}
             size={20}
-            color={active ? '#2563EB' : '#6B7280'}
+            color={active ? '#007AFF' : '#6B7280'}
           />
           <Text style={[styles.menuText, active && styles.activeMenuText]}>
             {item.title}
@@ -189,7 +189,7 @@ export default function DrawerContent(props: DrawerContentProps) {
             <Ionicons
               name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
               size={16}
-              color={active ? '#2563EB' : '#9CA3AF'}
+              color={active ? '#007AFF' : '#9CA3AF'}
             />
           )}
         </TouchableOpacity>
@@ -213,7 +213,7 @@ export default function DrawerContent(props: DrawerContentProps) {
       <View style={styles.header}>
         <View style={styles.userInfo}>
           {user?.images?.image_name ? (
-            <View style={{ width: 54, height: 54, borderRadius: 27, overflow: 'hidden' }}>
+            <View style={styles.imageContainer}>
               <Image
                 source={{ uri: `${IMAGE_URL}/users/${user.images.image_name}` }}
                 style={{ width: '100%', height: '100%' }}
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
 
   // HEADER
   header: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007AFF',
     paddingTop: 24,
     paddingBottom: 24,
     paddingHorizontal: 20,
@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  imageContainer: { width: 54, height: 54, borderRadius: 27, overflow: 'hidden', borderWidth: 3, borderColor: '#fff' },
   userInfo: { flexDirection: 'row', alignItems: 'center' },
   userText: { marginLeft: 14 },
   userName: { color: '#fff', fontSize: 18, fontWeight: '700' },
@@ -312,10 +313,10 @@ const styles = StyleSheet.create({
   activeMenuItem: {
     backgroundColor: '#EFF6FF',
     borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
+    borderLeftColor: '#007AFF',
   },
   activeMenuText: {
-    color: '#2563EB',
+    color: '#007AFF',
     fontWeight: '600'
   },
   subMenu: {

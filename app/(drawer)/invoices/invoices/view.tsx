@@ -84,6 +84,13 @@ export default function InvoiceViewScreen() {
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -123,8 +130,6 @@ export default function InvoiceViewScreen() {
                 } else {
                   // For mobile - you might need additional libraries like expo-file-system
                   Alert.alert('Success', 'PDF download started');
-                  // For React Native, you might need to use Linking or share the file
-                  // This is a basic implementation - you may need to adjust for mobile
                 }
               } catch (error: any) {
                 console.error('Error downloading PDF:', error);
@@ -286,16 +291,16 @@ export default function InvoiceViewScreen() {
                     SKU: {item.product_sku || 'N/A'} • {item.unit_name}
                   </Text>
                   <Text style={styles.itemDetails}>
-                    {item.quantity} × {item.sale_price}
+                    {item.quantity} × {formatCurrency(item.sale_price)}
                     {item.discount_value > 0 && (
                       <Text style={styles.discountText}>
-                        {' '}({item.discount_value} {item.discount_type === 'Percentage' ? '%' : ''})
+                        {' '}({item.discount_type}{' '}{item.discount_value})
                       </Text>
                     )}
                   </Text>
                 </View>
                 <Text style={styles.itemTotal}>
-                  {settings.currency}{item.total}
+                  {settings.currency}{formatCurrency(item.total)}
                 </Text>
               </View>
             ))}
@@ -314,7 +319,7 @@ export default function InvoiceViewScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>
-              {settings.currency}{invoice.total_price}
+              {settings.currency}{formatCurrency(invoice.total_price)}
             </Text>
           </View>
           
@@ -322,7 +327,7 @@ export default function InvoiceViewScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount</Text>
               <Text style={[styles.summaryValue, styles.discountValue]}>
-                {settings.currency}{invoice.total_discount}
+                {settings.currency}{formatCurrency(invoice.total_price)}
               </Text>
             </View>
           )}
@@ -330,7 +335,7 @@ export default function InvoiceViewScreen() {
           <View style={[styles.summaryRow, styles.grandTotalRow]}>
             <Text style={styles.grandTotalLabel}>Grand Total</Text>
             <Text style={styles.grandTotalValue}>
-              {settings.currency}{invoice.grand_total}
+              {settings.currency}{formatCurrency(invoice.grand_total)}
             </Text>
           </View>
         </View>
@@ -367,7 +372,7 @@ const DetailItem = ({ icon, label, value }: any) => (
     <View style={styles.detailContent}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue} numberOfLines={2}>
-        {value || 'Not provided'}
+        {value || '-'}
       </Text>
     </View>
   </View>

@@ -5,10 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  ActivityIndicator,
   TouchableOpacity,
   Linking,
-  Alert
+  Modal
 } from 'react-native';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,14 +23,49 @@ export default function CustomersViewScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [customer, setCustomer] = useState<any>(null);
+  const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (token && id) {
       fetchCustomer(id as string);
+      fetchSettings();
     }
   }, [token, id]);
+
+  const fetchSettings = async () => {
+    if (!token) {
+      console.error('Token missing for settings API');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const settingsObj: Record<string, string> = {};
+
+      Object.values(response.data).forEach((setting: any) => {
+        if (setting.data_name && setting.data_value !== undefined) {
+          settingsObj[setting.data_name] = setting.data_value;
+        }
+      });
+
+      setSettings(settingsObj);
+    } catch (error: any) {
+      console.error('Error fetching settings:', error);
+      if (error.response?.status === 401) {
+        console.log('Authentication Error', 'Please login again');
+      }
+    }
+  };
 
   const fetchCustomer = async (customerId: string) => {
     try {
@@ -48,6 +82,13 @@ export default function CustomersViewScreen() {
 
   // ✅ Show global loader until data fetched
   if (loading) return <LoadingScreen />;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
 
   if (error || !customer) {
     return (
@@ -67,10 +108,6 @@ export default function CustomersViewScreen() {
       </View>
     );
   }
-
-  const imageUrl = customer.image_url
-    ? `${IMAGE_URL}/customers/${customer.image_url}`
-    : null;
 
   return (
     <View style={styles.safeArea}>
@@ -96,8 +133,22 @@ export default function CustomersViewScreen() {
         {/* Profile Section */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.avatar} />
+            {customer?.images?.image_name ? (
+              <TouchableOpacity
+                onPress={() => {
+                  if (customer.images.image_name) {
+                    setSelectedImage(`${IMAGE_URL}/customers/${customer.images.image_name}`);
+                  } else {
+                    setSelectedImage(null);
+                  }
+                  setModalVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: `${IMAGE_URL}/customers/${customer.images.image_name}` }}
+                  style={styles.avatar}
+                />
+              </TouchableOpacity>
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Ionicons name="person" size={40} color="#9CA3AF" />
@@ -108,6 +159,39 @@ export default function CustomersViewScreen() {
             ]}>
               <Text style={styles.statusText}>{customer.status}</Text>
             </View>
+
+            {/* Full Image Modal */}
+            <Modal
+              visible={modalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setModalVisible(false)}
+            >
+              <View style={styles.modalBackground}>
+                {/* ✅ Close Icon */}
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Ionicons name="close" size={28} color="#fff" />
+                </TouchableOpacity>
+
+                {/* ✅ Full Image */}
+                {selectedImage ? (
+                  <Image
+                    source={{ uri: selectedImage }}
+                    style={styles.fullImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Image
+                    source={require('../../../assets/images/placeholder.jpg')}
+                    style={styles.fullImage}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            </Modal>
           </View>
           
           <View style={styles.profileInfo}>
@@ -164,13 +248,13 @@ export default function CustomersViewScreen() {
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel}>Credit Balance</Text>
               <Text style={styles.financialValue}>
-                ₹{customer.credit_balance || '0.00'}
+                {settings.currency}{formatCurrency(customer.credit_balance || '0.00')}
               </Text>
             </View>
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel}>Credit Limit</Text>
               <Text style={styles.financialValue}>
-                ₹{customer.credit_limit || '0.00'}
+                {settings.currency}{formatCurrency(customer.credit_limit || '0.00')}
               </Text>
             </View>
           </View>
@@ -191,53 +275,77 @@ export default function CustomersViewScreen() {
         )}
 
         {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.secondaryButton}
-              onPress={() => {
-                if (customer.mobile_number) {
-                  // For messaging - would typically open messaging app
-                  Linking.openURL(`sms:${customer.mobile_number}`);
-                } else {
-                  Alert.alert('No mobile number', 'Mobile number is not available for this customer.');
-                }
-              }}
+        <View style={styles.actionButtons}>
+          {/* Message Button */}
+          <TouchableOpacity
+            style={[
+              styles.secondaryButton,
+              !customer.mobile_number && styles.disabledButton
+            ]}
+            disabled={!customer.mobile_number}
+            onPress={() => Linking.openURL(`sms:${customer.mobile_number}`)}
+          >
+            <Ionicons
+              name="chatbubble-outline"
+              size={18}
+              color={customer.mobile_number ? "#6366F1" : "#9CA3AF"}
+            />
+            <Text
+              style={[
+                styles.secondaryButtonText,
+                !customer.mobile_number && { color: "#9CA3AF" }
+              ]}
             >
-              <Ionicons name="chatbubble-outline" size={18} color="#6366F1" />
-              <Text style={styles.secondaryButtonText}>Message</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
+              Message
+            </Text>
+          </TouchableOpacity>
+
+          {/* Call Button */}
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              !(customer.mobile_number || customer.phone_number) && styles.disabledButton
+            ]}
+            disabled={!(customer.mobile_number || customer.phone_number)}
+            onPress={() => {
+              const phoneNumber = customer.mobile_number || customer.phone_number;
+              Linking.openURL(`tel:${phoneNumber}`);
+            }}
+          >
+            <Ionicons
+              name="call-outline"
+              size={18}
+              color={customer.mobile_number || customer.phone_number ? "#fff" : "#ccc"}
+            />
+            <Text
+              style={[
+                styles.buttonText,
+                !(customer.mobile_number || customer.phone_number) && { color: "#ccc" }
+              ]}
+            >
+              Call
+            </Text>
+          </TouchableOpacity>
+
+          {/* WhatsApp Button — only visible if mobile number exists */}
+          {customer.mobile_number ? (
+            <TouchableOpacity
               style={styles.whatsappButton}
-              onPress={() => {
-                if (customer.mobile_number) {
-                  // Open WhatsApp with phone number
-                  Linking.openURL(`whatsapp://send?phone=${customer.mobile_number}`);
-                } else {
-                  Alert.alert('No mobile number', 'Mobile number is not available for WhatsApp.');
-                }
-              }}
+              onPress={() => Linking.openURL(`whatsapp://send?phone=${customer.mobile_number}`)}
             >
               <Ionicons name="logo-whatsapp" size={18} color="#fff" />
               <Text style={styles.buttonText}>WhatsApp</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => {
-                if (customer.mobile_number || customer.phone_number) {
-                  // Prefer mobile number, fallback to phone number
-                  const phoneNumber = customer.mobile_number || customer.phone_number;
-                  Linking.openURL(`tel:${phoneNumber}`);
-                } else {
-                  Alert.alert('No phone number', 'No phone number is available for this customer.');
-                }
-              }}
+          ) : (
+            <TouchableOpacity
+              style={[styles.whatsappButton, styles.disabledButton]}
+              disabled
             >
-              <Ionicons name="call-outline" size={18} color="#fff" />
-              <Text style={styles.buttonText}>Call</Text>
+              <Ionicons name="logo-whatsapp" size={18} color="#ccc" />
+              <Text style={[styles.buttonText, { color: "#ccc" }]}>WhatsApp</Text>
             </TouchableOpacity>
-          </View>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -252,7 +360,7 @@ const DetailItem = ({ icon, label, value }: any) => (
     <View style={styles.detailContent}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue} numberOfLines={1}>
-        {value || 'Not provided'}
+        {value || '-'}
       </Text>
     </View>
   </View>
@@ -372,15 +480,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   activeBadge: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#34C759',
   },
   inactiveBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FF3B30',
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#166534',
+    color: '#fff',
   },
   profileInfo: {
     alignItems: 'center',
@@ -533,5 +641,34 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontWeight: '500',
     fontSize: 14,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
   },
 });
