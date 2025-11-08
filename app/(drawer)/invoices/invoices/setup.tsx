@@ -40,6 +40,7 @@ interface Product {
 
 interface Invoice {
   id?: string;
+  invoice_number: string;
   customer_id: string;
   invoice_date: string;
   status: string;
@@ -70,6 +71,7 @@ export default function InvoicesSetupScreen() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<Invoice>({
     customer_id: '',
+    invoice_number: '',
     invoice_date: new Date().toISOString().split('T')[0],
     status: 'Active',
     description: '',
@@ -106,6 +108,7 @@ export default function InvoicesSetupScreen() {
   const resetForm = () => {
     setCurrentRecord({
       customer_id: '',
+      invoice_number: '',
       invoice_date: new Date().toISOString().split('T')[0],
       status: 'Active',
       description: '',
@@ -280,6 +283,7 @@ export default function InvoicesSetupScreen() {
       // Set the current record with fetched data - ensure customer_id is string
       const updatedRecord = {
         id: invoiceData.id?.toString() || '',
+        invoice_number: invoiceData.invoice_number,
         customer_id: invoiceData.customer_id?.toString() || '',
         invoice_date: invoiceData.invoice_date.split('T')[0],
         status: invoiceData.status,
@@ -973,6 +977,27 @@ export default function InvoicesSetupScreen() {
           </TouchableOpacity>
           <Text style={styles.title}>{isEditMode ? 'Edit Invoice' : 'Add Invoice'}</Text>
           <View style={{ width: 24 }} /> 
+        </View>
+
+        {/* Invoice Number Selection */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Invoice Number</Text>
+
+          {isEditMode ? (
+            // 🔹 Show when editing
+            <View style={styles.modalTrigger}>
+              <Text style={styles.modalTriggerText}>
+                {currentRecord.invoice_number || 'N/A'}
+              </Text>
+            </View>
+          ) : (
+            // 🔹 Hide when adding (will be generated on save)
+            <View style={styles.modalTrigger}>
+              <Text style={styles.modalTriggerPlaceholder}>
+                (Will be generated on save)
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Customer Selection */}

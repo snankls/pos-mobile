@@ -351,9 +351,18 @@ export default function StocksListsScreen() {
           {/* Delete Button */}
           <TouchableOpacity
             onPress={() => handleDelete(item)}
-            style={[styles.actionButton, styles.deleteButton]}
+            disabled={item.status === 'Posted'}
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              item.status === 'Posted' && { opacity: 0.5 },
+            ]}
           >
-            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+            <Ionicons
+              name="trash-outline"
+              size={18}
+              color={item.status === 'Posted' ? '#ccc' : '#FF3B30'}
+            />
           </TouchableOpacity>
         </View>
       </View>
