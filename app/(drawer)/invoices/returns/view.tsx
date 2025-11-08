@@ -44,10 +44,23 @@ export default function ReturnsViewScreen() {
       setInvoiceItems(invoiceRes.data.details || []);
     } catch (err) {
       setError('Failed to load data.');
-    } finally {
-      setLoading(false);
     }
   };
+
+  // Detail Item Component
+  const DetailItem = ({ icon, label, value }: any) => (
+    <View style={styles.detailItem}>
+      <View style={styles.detailIcon}>
+        <Ionicons name={icon} size={18} color="#6B7280" />
+      </View>
+      <View style={styles.detailContent}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={styles.detailValue} numberOfLines={2}>
+          {value || '-'}
+        </Text>
+      </View>
+    </View>
+  );
 
   const fetchSettings = async () => {
     if (!token) return;
@@ -73,14 +86,14 @@ export default function ReturnsViewScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return { color: '#fff', bgColor: '#34C759' };
-      case 'inactive': return { color: '#fff', bgColor: '#FF3B30' };
-      default: return { color: '#fff', bgColor: '#34C759' };
+    switch (status?.toLowerCase()) {
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      default: return '#34C759';
     }
   };
 
@@ -202,8 +215,6 @@ export default function ReturnsViewScreen() {
     );
   }
 
-  const statusInfo = getStatusColor(iReturn.status);
-
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -232,8 +243,8 @@ export default function ReturnsViewScreen() {
               <Text style={styles.invoiceNumber}>{iReturn.invoice_number}</Text>
               <Text style={styles.invoiceDate}>{formatDate(iReturn.return_date)}</Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}>
-              <Text style={[styles.statusText, { color: statusInfo.color }]}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(iReturn.status) }]}>
+              <Text style={styles.statusText}>
                 {iReturn.status}
               </Text>
             </View>
@@ -359,22 +370,8 @@ export default function ReturnsViewScreen() {
   );
 }
 
-// Detail Item Component
-const DetailItem = ({ icon, label, value }: any) => (
-  <View style={styles.detailItem}>
-    <View style={styles.detailIcon}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
-    </View>
-    <View style={styles.detailContent}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={2}>
-        {value || '-'}
-      </Text>
-    </View>
-  </View>
-);
-
 const styles = StyleSheet.create({
+  // ===== MAIN CONTAINER & LAYOUT =====
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
@@ -382,18 +379,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
+
+  // ===== ERROR STATES =====
   errorContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -412,6 +401,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
+
+  // ===== HEADER SECTION =====
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -447,13 +438,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  iconButton: {
-    padding: 8,
-  },
+
+  // ===== INVOICE HEADER CARD =====
   invoiceHeaderCard: {
     backgroundColor: '#fff',
     margin: 20,
@@ -489,6 +475,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#fff',
   },
   description: {
     fontSize: 14,
@@ -496,6 +483,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontStyle: 'italic',
   },
+
+  // ===== CONTENT SECTIONS =====
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -522,6 +511,8 @@ const styles = StyleSheet.create({
   sectionContent: {
     gap: 12,
   },
+
+  // ===== DETAIL ITEM COMPONENT =====
   detailItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -545,6 +536,8 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+
+  // ===== ITEMS LIST STYLES =====
   itemsContainer: {
     gap: 12,
   },
@@ -584,6 +577,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+
+  // ===== SUMMARY SECTION =====
   summaryCard: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -632,6 +627,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6366F1',
   },
+
+  // ===== ACTION BUTTONS =====
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
@@ -639,6 +636,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   primaryButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

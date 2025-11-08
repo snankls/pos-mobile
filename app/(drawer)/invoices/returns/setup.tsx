@@ -24,7 +24,6 @@ interface Customer {
   id: string;
   name: string;
   code: string;
-  customer_label?: string;
 }
 
 interface Product {
@@ -34,9 +33,11 @@ interface Product {
   sale_price: string;
   unit_id: string;
   unit_name: string;
-  product_label?: string;
   price?: string;
   quantity?: string;
+  original_quantity?: string;
+  returned_quantity?: string;
+  product_label?: string;
 }
 
 interface Invoice {
@@ -62,6 +63,9 @@ interface InvoiceItem {
   price: number;
   total_amount: number;
   max_return_quantity?: string;
+  available_quantity?: string;
+  original_quantity?: string;
+  returned_quantity?: string;
 }
 
 interface InvoiceNumber {
@@ -69,6 +73,29 @@ interface InvoiceNumber {
   invoice_number: string;
   customer_id: string;
   customer_name: string;
+}
+
+interface ReturnData {
+  id?: string;
+  invoice_number?: string;
+  customer_id?: string;
+  customer_name?: string;
+  return_date?: string;
+  status?: string;
+  details?: ReturnDetail[];
+}
+
+interface ReturnDetail {
+  id?: string;
+  product_id?: string;
+  product_name?: string;
+  quantity?: string | number;
+  unit_id?: string;
+  unit_name?: string;
+  discount_type?: string;
+  discount_value?: string | number;
+  price?: string | number;
+  total_amount?: string | number;
 }
 
 export default function ReturnsSetupScreen() {
@@ -89,7 +116,7 @@ export default function ReturnsSetupScreen() {
   });
 
   const [invoiceNumbers, setInvoiceNumbers] = useState<InvoiceNumber[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  // const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [originalInvoiceItems, setOriginalInvoiceItems] = useState<InvoiceItem[]>([]);
   const [itemsList, setItemsList] = useState<InvoiceItem[]>([]);
@@ -106,6 +133,7 @@ export default function ReturnsSetupScreen() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<InvoiceNumber[]>([]);
   const [settings, setSettings] = useState<any>({});
+  const [isAmountValid, setIsAmountValid] = useState(false);
 
   // Status options from API
   const [statusOptions, setStatusOptions] = useState<any[]>([]);
@@ -138,23 +166,39 @@ export default function ReturnsSetupScreen() {
     let quantityTotal = 0;
     let priceTotal = 0;
     let discountTotal = 0;
+    let grandTotalCalc = 0;
 
-    itemsList.forEach(item => {
-      if (item.product_id) {
+    itemsList.forEach((item, index) => {
+      if (item.product_id && item.quantity) {
         const quantity = parseFloat(item.quantity) || 0;
         const price = Number(item.price) || 0;
-        const itemTotal = Number(item.total_amount) || 0;
         
         quantityTotal += quantity;
-        priceTotal += price * quantity;
-        discountTotal += (price * quantity) - itemTotal;
+        
+        // Calculate item subtotal (price * quantity)
+        const itemSubtotal = price * quantity;
+        priceTotal += itemSubtotal;
+        
+        // Calculate discount for this item
+        let itemDiscount = 0;
+        if (item.discountType === 'Percentage') {
+          itemDiscount = (itemSubtotal * parseFloat(item.discountValue || '0')) / 100;
+        } else {
+          itemDiscount = parseFloat(item.discountValue || '0');
+        }
+        
+        discountTotal += itemDiscount;
+        
+        // Calculate item total after discount
+        const itemTotal = itemSubtotal - itemDiscount;
+        grandTotalCalc += itemTotal;
       }
     });
 
     setTotalQuantity(quantityTotal);
     setTotalPrice(priceTotal);
     setTotalDiscount(discountTotal);
-    setGrandTotal(priceTotal - discountTotal);
+    setGrandTotal(grandTotalCalc);
   };
 
   const fetchSettings = async () => {
@@ -182,9 +226,6 @@ export default function ReturnsSetupScreen() {
       setSettings(settingsObj);
     } catch (error: any) {
       console.error('Error fetching settings:', error);
-      if (error.response?.status === 401) {
-        console.log('Authentication Error', 'Please login again');
-      }
     }
   };
 
@@ -269,7 +310,7 @@ export default function ReturnsSetupScreen() {
       // Use details array to get original items
       const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
       
-      // Transform items data to match our interface
+      // Transform items data to match our interface - USE THE NEW AVAILABLE QUANTITY
       const transformedItems = itemsData.map((item: any) => ({
         id: item.id?.toString() || '',
         product_id: item.product_id?.toString() || '',
@@ -278,11 +319,14 @@ export default function ReturnsSetupScreen() {
         quantity: '0', // Start with 0 for return quantity
         unit_id: item.unit_id?.toString() || '',
         unit_name: item.unit_name || '',
-        discountType: item.discount_type || 'Percentage', // Get discount type from invoice
+        discountType: item.discount_type || 'Percentage',
         discountValue: item.discount_value ? item.discount_value.toString() : '0',
         price: item.sale_price ? item.sale_price.toString() : '0',
         total_amount: '0', // Start with 0
-        max_return_quantity: item.quantity ? item.quantity.toString() : '0' // Maximum that can be returned
+        max_return_quantity: item.available_quantity ? item.available_quantity.toString() : '0', // Use available_quantity instead of quantity
+        available_quantity: item.available_quantity ? item.available_quantity.toString() : '0',
+        original_quantity: item.original_quantity ? item.original_quantity.toString() : '0',
+        returned_quantity: item.returned_quantity ? item.returned_quantity.toString() : '0'
       }));
 
       setOriginalInvoiceItems(transformedItems);
@@ -294,7 +338,7 @@ export default function ReturnsSetupScreen() {
       const pickersArray = new Array(transformedItems.length).fill(false);
       setShowProductPickers(pickersArray);
       
-      // Fetch available products for this invoice (products that can be returned)
+      // Fetch available products for this invoice
       await fetchAvailableProducts(invoiceId);
 
     } catch (error: any) {
@@ -309,8 +353,8 @@ export default function ReturnsSetupScreen() {
       }
     }
   };
-
-  // Fetch available products for returns (products from the selected invoice)
+  
+  // Fetch available products for returns
   const fetchAvailableProducts = async (invoiceId: string) => {
     try {
       if (!token) return;
@@ -334,9 +378,11 @@ export default function ReturnsSetupScreen() {
         sale_price: item.sale_price || '0',
         unit_id: item.unit_id?.toString() || '',
         unit_name: item.unit_name || '',
-        quantity: item.quantity || '0',
+        quantity: item.available_quantity !== undefined ? item.available_quantity.toString() : '0',
+        original_quantity: item.original_quantity ? item.original_quantity.toString() : '0',
+        returned_quantity: item.returned_quantity ? item.returned_quantity.toString() : '0',
         price: item.sale_price || '0',
-        product_label: `${item.product_name || 'Unknown Product'} (${item.product_sku || 'N/A'}) - ${settings.currency} ${item.sale_price || '0'}`
+        product_label: `${item.product_name || 'Unknown Product'} (${item.product_sku || 'N/A'}) - ${settings.currency} ${item.sale_price || '0'} - Available: ${item.available_quantity !== undefined ? item.available_quantity.toString() : '0'}`
       }));
       
       setProducts(transformedProducts);
@@ -344,25 +390,11 @@ export default function ReturnsSetupScreen() {
 
     } catch (error: any) {
       console.error('Error fetching available products:', error);
-      // Fallback to using original invoice items
-      const productsFromItems = originalInvoiceItems.map(item => ({
-        id: item.product_id,
-        name: item.product_name || 'Unknown Product',
-        sku: 'N/A',
-        sale_price: String(item.price || '0'),
-        unit_id: item.unit_id,
-        unit_name: item.unit_name,
-        quantity: item.max_return_quantity || '0',
-        price: String(item.price || '0'),
-        product_label: `${item.product_name || 'Unknown Product'} (N/A) - {settings.currency} ${item.price}`
-      }));
-      
-      setProducts(productsFromItems);
-      setFilteredProducts(productsFromItems);
+      // Fallback logic...
     }
   };
-
-  // Fetch return data for edit mode
+  
+  // Fetch return data for edit mode - Fixed transformation
   const fetchReturnData = async (returnId: string) => {
     try {
       if (!token) {
@@ -370,31 +402,17 @@ export default function ReturnsSetupScreen() {
         return;
       }
 
-      const response = await axios.get(`${API_URL}/invoice/returns/${returnId}`, {
+      // 1. Fetch the return data (this works fine)
+      const returnResponse = await axios.get(`${API_URL}/invoice/returns/${returnId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
       
-      const returnData = response.data;
-      
-      // Transform return data to match our interface
-      const itemsData = returnData.details && Array.isArray(returnData.details) ? returnData.details : [];
-      
-      const transformedItems = itemsData.map((item: any) => ({
-        id: item.id?.toString() || '',
-        product_id: item.product_id?.toString() || '',
-        product_name: item.product_name || '',
-        quantity: item.quantity ? item.quantity.toString() : '0',
-        unit_id: item.unit_id?.toString() || '',
-        unit_name: item.unit_name || '',
-        discountType: item.discount_type || 'Percentage',
-        discountValue: item.discount_value ? item.discount_value.toString() : '0',
-        price: item.price ? item.price.toString() : '0',
-        total_amount: item.total_amount ? item.total_amount.toString() : '0'
-      }));
+      const returnData = returnResponse.data;
 
+      // Set basic return data
       const updatedRecord = {
         id: returnData.id?.toString() || '',
         invoice_number: returnData.invoice_number || '',
@@ -402,31 +420,153 @@ export default function ReturnsSetupScreen() {
         customer_name: returnData.customer_name || '',
         return_date: returnData.return_date?.split('T')[0] || new Date().toISOString().split('T')[0],
         status: returnData.status || 'Active',
-        items: transformedItems
+        items: []
       };
       
       setCurrentRecord(updatedRecord);
-      setItemsList(transformedItems);
       
-      // Initialize pickers arrays
-      const pickersArray = new Array(transformedItems.length).fill(false);
-      setShowProductPickers(pickersArray);
+      const invoiceDetailsResponse = await axios.get(
+        `${API_URL}/invoices/for-return/${returnData.invoice_number}?current_return_id=${returnId}`, 
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      // Fetch invoice numbers for dropdown
-      await fetchInvoiceNumbers();
+      if (invoiceDetailsResponse.data.error) {
+        console.error('Invoice API Error:', invoiceDetailsResponse.data.error);
+        Alert.alert('Error', invoiceDetailsResponse.data.error);
+        return;
+      }
+
+      const invoiceData = invoiceDetailsResponse.data;
+
+      // Transform items with proper max quantity calculation for edit mode
+      const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
+      
+      const transformedItems = itemsData.map((item: any) => {
+        const originalAvailableQty = item.original_quantity ? parseInt(item.original_quantity) : 0;
+        const returnedQty = item.returned_quantity ? parseInt(item.returned_quantity) : 0;
+        
+        const currentReturnItem = returnData.details?.find((ri: any) => 
+          ri.product_id?.toString() === item.product_id?.toString()
+        );
+        const currentReturnQty = currentReturnItem?.quantity ? parseInt(currentReturnItem.quantity) : 0;
+        
+        // For edit mode: max = original available + current return quantity
+        const maxReturnQuantity = originalAvailableQty + currentReturnQty;
+        
+        return {
+          id: item.id?.toString() || '',
+          product_id: item.product_id ? item.product_id.toString() : '',
+          product_name: item.product_name || '',
+          product_sku: item.product_sku || '',
+          quantity: '0',
+          unit_id: item.unit_id?.toString() || '',
+          unit_name: item.unit_name || '',
+          discountType: item.discount_type || 'Percentage',
+          discountValue: item.discount_value ? item.discount_value.toString() : '0',
+          price: item.sale_price ? Number(item.sale_price) : 0,
+          total_amount: 0,
+          available_quantity: item.available_quantity?.toString() || '0',
+          original_quantity: item.original_quantity?.toString() || '0',
+          returned_quantity: item.returned_quantity?.toString() || '0',
+          max_return_quantity: maxReturnQuantity.toString()
+        };
+      });
+
+      setOriginalInvoiceItems(transformedItems);
+      
+      // Merge with return quantities
+      const returnItems = returnData.details || [];
+      const mergedItems = transformedItems.map((invoiceItem: any) => {
+        const returnItem = returnItems.find((ri: any) => 
+          ri.product_id?.toString() === invoiceItem.product_id
+        );
+        
+        if (returnItem) {
+          return {
+            ...invoiceItem,
+            id: returnItem.id?.toString() || '',
+            quantity: returnItem.quantity?.toString() || '0',
+            discountType: returnItem.discount_type || invoiceItem.discountType,
+            discountValue: returnItem.discount_value?.toString() || invoiceItem.discountValue,
+            price: returnItem.price ? Number(returnItem.price) : invoiceItem.price,
+            total_amount: returnItem.total_amount ? Number(returnItem.total_amount) : 0,
+          };
+        }
+
+        return invoiceItem;
+      })
+      .filter((item: InvoiceItem) => item.quantity !== '0');
+
+      setItemsList(mergedItems);
+      setShowProductPickers(new Array(mergedItems.length).fill(false));
+      
+      // Fetch available products if needed
+      await fetchAvailableProducts(invoiceData.id);
 
     } catch (error: any) {
-      console.error('Error fetching return data:', error);
+      console.error('Error in fetchReturnData:', error);
       
       if (error.response?.status === 401) {
         Alert.alert('Authentication Error', 'Please login again');
       } else if (error.response?.status === 404) {
-        Alert.alert('Error', 'Return record not found');
+        Alert.alert('Error', 'Invoice or return record not found');
+      } else if (error.response?.data?.error) {
+        Alert.alert('Error', error.response.data.error);
       } else {
         Alert.alert('Error', 'Failed to load return data');
       }
     }
   };
+
+  // const handleQuantityChange = (index: number, value: string) => {
+  //   const updatedItems = [...itemsList];
+  //   const item = updatedItems[index];
+    
+  //   // Parse quantities
+  //   const newQuantity = parseFloat(value) || 0;
+  //   const maxReturnQuantity = parseFloat(item.max_return_quantity) || 0;
+    
+  //   // 🔥 FIX: For edit mode, allow up to max_return_quantity
+  //   if (newQuantity > maxReturnQuantity) {
+  //     Alert.alert(
+  //       'Quantity Limit',
+  //       `Cannot return more than ${maxReturnQuantity} units for ${item.product_name}. ` +
+  //       `Note: In edit mode, you can modify quantities up to the original available limit.`
+  //     );
+  //     return;
+  //   }
+    
+  //   // Update quantity and recalculate total
+  //   item.quantity = value;
+  //   item.total_amount = calculateItemTotal(item);
+  //   updatedItems[index] = item;
+    
+  //   setItemsList(updatedItems);
+  // };
+
+  // const calculateItemTotal = (item: any): number => {
+  //   const quantity = parseFloat(item.quantity) || 0;
+  //   const price = parseFloat(item.price.toString()) || 0;
+  //   const discountValue = parseFloat(item.discountValue) || 0;
+    
+  //   let subtotal = quantity * price;
+    
+  //   if (item.discountType === 'Percentage') {
+  //     // Percentage discount
+  //     const discountAmount = subtotal * (discountValue / 100);
+  //     subtotal -= discountAmount;
+  //   } else if (item.discountType === 'Fixed') {
+  //     // Fixed amount discount
+  //     subtotal -= discountValue;
+  //   }
+    
+  //   return Math.max(0, subtotal);
+  // };
 
   // Check if we're in edit mode
   useEffect(() => {
@@ -475,9 +615,11 @@ export default function ReturnsSetupScreen() {
         setLoading(true);
         
         // Fetch all initial data
-        fetchInvoiceNumbers();
-        fetchStatus();
-        fetchSettings();
+        await Promise.all([
+          fetchInvoiceNumbers(),
+          fetchStatus(), 
+          fetchSettings()
+        ]);
 
         // If in edit mode and we have ID, fetch return data
         if (id && isEditMode) {
@@ -492,9 +634,6 @@ export default function ReturnsSetupScreen() {
 
     initializeData();
   }, [id, isEditMode, token]);
-
-  // ✅ Show global loader until data fetched
-  if (loading) return <LoadingScreen />;
 
   // Date handling
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -555,7 +694,11 @@ export default function ReturnsSetupScreen() {
         discountType: originalItem?.discountType || 'Percentage',
         discountValue: originalItem?.discountValue || '0',
         total_amount: 0,
-        max_return_quantity: originalItem?.quantity || selectedProduct.quantity || '0'
+        // Use available_quantity from the product data
+        max_return_quantity: selectedProduct.quantity || '0',
+        available_quantity: selectedProduct.quantity || '0',
+        original_quantity: selectedProduct.original_quantity || '0',
+        returned_quantity: selectedProduct.returned_quantity || '0'
       };
       setItemsList(updatedItems);
       
@@ -688,8 +831,47 @@ export default function ReturnsSetupScreen() {
       const total = (price * quantity) - discountAmount;
       item.total_amount = parseFloat(Math.max(0, total).toFixed(2));
       setItemsList(updatedItems);
+      
+      // Update totals immediately
+      updateTotals();
     }
   };
+
+  // Recalculate all item totals when itemsList changes
+  useEffect(() => {
+    if (itemsList.length > 0) {
+      const updatedItems = itemsList.map(item => {
+        if (item.product_id && item.quantity && item.price && (!item.total_amount || item.total_amount === 0)) {
+          const quantity = parseFloat(item.quantity) || 0;
+          const price = Number(item.price) || 0;
+          const discountValue = parseFloat(item.discountValue) || 0;
+          
+          let discountAmount = 0;
+          if (item.discountType === 'Percentage') {
+            discountAmount = (price * quantity * discountValue) / 100;
+          } else {
+            discountAmount = discountValue;
+          }
+          
+          const total = (price * quantity) - discountAmount;
+          return {
+            ...item,
+            total_amount: parseFloat(Math.max(0, total).toFixed(2))
+          };
+        }
+        return item;
+      });
+      
+      // Only update if something changed
+      const hasChanges = JSON.stringify(updatedItems) !== JSON.stringify(itemsList);
+      if (hasChanges) {
+        setItemsList(updatedItems);
+      }
+      
+      // Always update totals
+      updateTotals();
+    }
+  }, [itemsList.length]); // Only run when items count changes
 
   // Validate quantity doesn't exceed maximum returnable quantity
   const validateQuantity = (quantity: string, maxQuantity: string) => {
@@ -701,59 +883,45 @@ export default function ReturnsSetupScreen() {
   const clearError = (field: string) => {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
   };
-
-  // Form validation
-  const validateForm = (): boolean => {
-    const errors: any = {};
-
-    if (!currentRecord.invoice_number) {
-      errors.invoice_number = ['Invoice number is required'];
+  
+  const handleSubmit = async (isPost: boolean) => {
+    // 🔹 If posting, confirm first
+    if (isPost) {
+      Alert.alert(
+        "Confirm Post",
+        "Are you sure you want to post this invoice return? Once posted, it cannot be edited.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Yes, Post",
+            onPress: async () => {
+              await handleSubmitConfirmed(true);
+            },
+          },
+        ]
+      );
+      return; // stop here until confirmation
     }
 
-    if (!currentRecord.return_date) {
-      errors.return_date = ['Return date is required'];
-    }
-
-    if (!currentRecord.status) {
-      errors.status = ['Status is required'];
-    }
-
-    if (itemsList.length === 0) {
-      errors.items = ['At least one return item is required'];
-    } else {
-      itemsList.forEach((item, index) => {
-        if (!item.product_id) {
-          errors[`items[${index}].product_id`] = ['Product is required'];
-        }
-        if (!item.quantity || parseFloat(item.quantity) <= 0) {
-          errors[`items[${index}].quantity`] = ['Valid quantity is required'];
-        }
-        
-        // Validate quantity doesn't exceed maximum
-        if (item.max_return_quantity && !validateQuantity(item.quantity, item.max_return_quantity)) {
-          errors[`items[${index}].quantity`] = [`Quantity cannot exceed ${item.max_return_quantity}`];
-        }
-      });
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    // 🔹 Otherwise, run directly (for Save)
+    await handleSubmitConfirmed(false);
   };
 
   // Form submission
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+  const handleSubmitConfirmed = async (isPost: boolean) => {
     setIsLoading(true);
     setGlobalErrorMessage('');
     setFormErrors({});
 
     try {
+      // 🔥 FIX: Determine the correct status
+      const finalStatus = isPost ? 'Posted' : currentRecord.status;
+
       const formData = {
         ...currentRecord,
+        id: currentRecord.id, // ✅ add this
         invoice_number: currentRecord.invoice_number,
+        status: finalStatus,
         total_quantity: totalQuantity.toFixed(2),
         total_price: totalPrice.toFixed(2),
         total_discount: totalDiscount.toFixed(2),
@@ -842,9 +1010,15 @@ export default function ReturnsSetupScreen() {
       product.sku.toLowerCase().includes(productSearch.toLowerCase())
     );
 
-    const maxQuantity = parseFloat(item.max_return_quantity || '0');
+    // Use available_quantity for validation instead of max_return_quantity
+    const maxQuantity = parseFloat(item.available_quantity || item.max_return_quantity || '0');
     const currentQuantity = parseFloat(item.quantity || '0');
+    
+    // 🔥 FIX: Only show error if user INCREASES quantity beyond available
     const quantityError = currentQuantity > maxQuantity;
+
+    // 🔥 FIX: Get the current picker state for this specific row
+    const isPickerOpen = showProductPickers[index] || false;
 
     return (
       <View style={styles.itemRow}>
@@ -862,7 +1036,8 @@ export default function ReturnsSetupScreen() {
                 Alert.alert('Error', 'Please select an invoice first');
                 return;
               }
-              const newPickers = new Array(itemsList.length).fill(false);
+              // 🔥 FIX: Properly set the picker state for this specific row
+              const newPickers = [...showProductPickers];
               newPickers[index] = true;
               setShowProductPickers(newPickers);
               setProductSearch('');
@@ -874,10 +1049,17 @@ export default function ReturnsSetupScreen() {
             </Text>
             <Ionicons name="chevron-down" size={20} color="#6B7280" />
           </TouchableOpacity>
+          
+          {/* Show available quantity information */}
+          <Text style={styles.maxQuantityText}>
+            Available Stock: {item.available_quantity || '0'}
+            {item.original_quantity && ` of ${item.original_quantity}`}
+            {item.returned_quantity && parseFloat(item.returned_quantity) > 0 && ` (Returned: ${item.returned_quantity})`}
+          </Text>
 
           {/* Product Selection Modal */}
           <Modal
-            visible={showProductPickers[index] || false}
+            visible={isPickerOpen}
             transparent
             animationType="slide"
             onRequestClose={() => {
@@ -893,6 +1075,7 @@ export default function ReturnsSetupScreen() {
                   <Text style={styles.modalTitle}>Select Product to Return</Text>
                   <TouchableOpacity 
                     onPress={() => {
+                      // 🔥 FIX: Properly close only this row's picker
                       const newPickers = [...showProductPickers];
                       newPickers[index] = false;
                       setShowProductPickers(newPickers);
@@ -934,7 +1117,13 @@ export default function ReturnsSetupScreen() {
                         styles.modalItem,
                         item.product_id === product.id && styles.selectedModalItem
                       ]}
-                      onPress={() => handleProductSelect(product.id, index)}
+                      onPress={() => {
+                        handleProductSelect(product.id, index);
+                        // 🔥 FIX: Close modal after selection
+                        const newPickers = [...showProductPickers];
+                        newPickers[index] = false;
+                        setShowProductPickers(newPickers);
+                      }}
                     >
                       <View style={styles.productInfo}>
                         <Text style={styles.productName} numberOfLines={1}>
@@ -944,8 +1133,13 @@ export default function ReturnsSetupScreen() {
                           SKU: {product.sku} • Price: {settings.currency} {product.sale_price}
                         </Text>
                         <Text style={styles.productUnit}>
-                          Unit: {product.unit_name} • Max Return: {product.quantity || '0'}
+                          Unit: {product.unit_name} • Available: {product.quantity || '0'} of {product.original_quantity || '0'}
                         </Text>
+                        {parseFloat(product.returned_quantity || '0') > 0 && (
+                          <Text style={styles.returnedInfo}>
+                            Already returned: {product.returned_quantity}
+                          </Text>
+                        )}
                       </View>
                       {item.product_id === product.id && (
                         <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
@@ -962,7 +1156,7 @@ export default function ReturnsSetupScreen() {
                         {productSearch 
                           ? 'Try a different search term' 
                           : 'All products are already added or no products found in this invoice'
-                        }
+                          }
                       </Text>
                     </View>
                   }
@@ -996,9 +1190,22 @@ export default function ReturnsSetupScreen() {
             editable={!!item.product_id && !isLoading}
             placeholder="0"
           />
-          {item.max_return_quantity && (
+          {/* {item.max_return_quantity && (
             <Text style={styles.maxQuantityText}>
-              Max: {item.max_return_quantity}
+              Max: {item.max_return_quantity} (Original: {item.original_quantity}, Returned: {item.returned_quantity})
+            </Text>
+          )} */}
+
+
+          {quantityError && (
+            <Text style={styles.errorTextSmall}>
+              Cannot return more than {item.available_quantity} units
+            </Text>
+          )}
+          {/* 🔥 ADD: Show info message in edit mode */}
+          {isEditMode && !quantityError && (
+            <Text style={styles.infoText}>
+              Editing existing return of {currentQuantity} units
             </Text>
           )}
         </View>
@@ -1059,6 +1266,9 @@ export default function ReturnsSetupScreen() {
       </View>
     );
   };
+
+  // Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   return (
     <KeyboardAvoidingView 
@@ -1121,16 +1331,25 @@ export default function ReturnsSetupScreen() {
         {/* Status */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Status <Text style={styles.errorText}>*</Text></Text>
-          <TouchableOpacity
-            style={[styles.modalTrigger, formErrors.status && styles.inputError]}
-            onPress={() => setShowStatusPicker(true)}
-            disabled={isLoading}
-          >
-            <Text style={!currentRecord.status ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
-              {getSelectedStatusName(currentRecord.status)}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
-          </TouchableOpacity>
+          
+          {currentRecord.status === 'Posted' ? (
+            // Read-only field for Posted status
+            <View style={styles.readOnlyField}>
+              <Text style={styles.readOnlyText}>Posted</Text>
+            </View>
+          ) : (
+            // Editable field for other statuses
+            <TouchableOpacity
+              style={[styles.modalTrigger, formErrors.status && styles.inputError]}
+              onPress={() => setShowStatusPicker(true)}
+              disabled={isLoading}
+            >
+              <Text style={!currentRecord.status ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
+                {getSelectedStatusName(currentRecord.status)}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
           {formErrors.status && (
             <Text style={styles.errorText}>{formErrors.status[0]}</Text>
           )}
@@ -1174,15 +1393,14 @@ export default function ReturnsSetupScreen() {
               ) : (
                 <View style={styles.emptyItems}>
                   <Ionicons name="document-text-outline" size={40} color="#ccc" />
-                  <Text style={styles.emptyItemsText}>
-                    {currentRecord.invoice_number ? 'No return items added' : 'Select an invoice to add items'}
-                  </Text>
+                  <Text style={styles.emptyItemsText}>No items added</Text>
                 </View>
               )}
             </View>
           </ScrollView>
 
           {/* Add Item Button */}
+          {currentRecord.status !== 'Posted' && (
           <TouchableOpacity 
             style={[styles.addItemButton, (!currentRecord.invoice_number || isLoading) && styles.addItemButtonDisabled]} 
             onPress={addItemRow}
@@ -1191,6 +1409,7 @@ export default function ReturnsSetupScreen() {
             <Ionicons name="add-circle-outline" size={20} color="#34C759" />
             <Text style={styles.addItemText}>Add Return Item</Text>
           </TouchableOpacity>
+          )}
         </View>
 
         {/* Totals Section */}
@@ -1215,18 +1434,49 @@ export default function ReturnsSetupScreen() {
           </View>
         )}
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, (isLoading || itemsList.length === 0) && styles.saveButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isLoading || itemsList.length === 0}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Changing</Text>
-          )}
-        </TouchableOpacity>
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.primaryButton,
+              (isLoading || currentRecord.status === 'Posted') && styles.buttonDisabled
+            ]}
+            onPress={() => handleSubmit(false)}
+            disabled={isLoading || currentRecord.status === 'Posted'}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.secondaryButton,
+              (isLoading || currentRecord.status === 'Posted') && styles.buttonDisabled
+            ]}
+            onPress={() => handleSubmit(true)}
+            disabled={isLoading || currentRecord.status === 'Posted'}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Post Return</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Status Message */}
+        {currentRecord.status === 'Posted' && (
+          <View style={styles.statusMessage}>
+            <Text style={styles.statusMessageText}>
+              Invoice Return has been posted and cannot be changed.
+            </Text>
+          </View>
+        )}
 
         {globalErrorMessage ? (
           <View style={styles.errorContainer}>
@@ -1378,6 +1628,7 @@ export default function ReturnsSetupScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ===== MAIN CONTAINER & LAYOUT =====
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
@@ -1386,6 +1637,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 16,
   },
+
+  // ===== HEADER SECTION =====
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1400,6 +1653,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
   },
+
+  // ===== FORM FIELD GROUPS =====
   fieldGroup: {
     marginBottom: 16,
   },
@@ -1409,9 +1664,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#374151',
   },
-  required: {
-    color: '#ef4444',
-  },
+
+  // ===== MODAL TRIGGER STYLES (Dropdowns) =====
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1430,8 +1684,11 @@ const styles = StyleSheet.create({
   },
   modalTriggerPlaceholder: {
     fontSize: 16,
+    color: '#9ca3af',
     flex: 1,
   },
+
+  // ===== READ-ONLY FIELD STYLES =====
   readOnlyField: {
     backgroundColor: '#f3f4f6',
     borderWidth: 1,
@@ -1444,6 +1701,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
   },
+
+  // ===== ERROR STATES =====
   inputError: {
     borderColor: '#ef4444',
   },
@@ -1457,6 +1716,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  infoText: {
+    fontSize: 10,
+    color: '#007AFF',
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+
+  // ===== ITEMS TABLE SECTION =====
   itemsSection: {
     marginTop: 24,
   },
@@ -1466,33 +1733,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#1f2937',
   },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    borderColor: '#dbeafe',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  infoText: {
-    marginLeft: 8,
-    color: '#1e40af',
-    fontSize: 14,
-    flex: 1,
-  },
   tableScrollContainer: {
     marginBottom: 16,
   },
   tableContainer: {
-    minWidth: 800,
+    minWidth: 800, // Fixed width for horizontal scrolling
     backgroundColor: 'white',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#d1d5db',
     overflow: 'hidden',
   },
+
+  // ===== TABLE HEADER STYLES =====
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f3f4f6',
@@ -1506,6 +1759,14 @@ const styles = StyleSheet.create({
     borderColor: '#d1d5db',
     justifyContent: 'center',
   },
+  headerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+
+  // ===== TABLE COLUMN WIDTHS =====
   headerCellNumber: { width: 40 },
   headerCellProduct: { width: 250 },
   headerCellQty: { width: 80 },
@@ -1514,20 +1775,13 @@ const styles = StyleSheet.create({
   headerCellPrice: { width: 150 },
   headerCellTotal: { width: 150 },
   headerCellAction: { width: 60 },
-  headerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
-  },
+
+  // ===== TABLE ROW STYLES =====
   itemRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
     backgroundColor: 'white',
-  },
-  itemRowLast: {
-    borderBottomWidth: 0,
   },
   cell: {
     paddingVertical: 8,
@@ -1536,6 +1790,8 @@ const styles = StyleSheet.create({
     borderColor: '#f3f4f6',
     justifyContent: 'center',
   },
+
+  // ===== CELL WIDTHS (Match header widths) =====
   cellNumber: { width: 40 },
   cellProduct: { width: 250 },
   cellQty: { width: 80 },
@@ -1544,6 +1800,8 @@ const styles = StyleSheet.create({
   cellPrice: { width: 150 },
   cellTotal: { width: 150 },
   cellAction: { width: 60 },
+
+  // ===== CELL CONTENT STYLES =====
   rowNumberText: {
     textAlign: 'center',
     fontSize: 14,
@@ -1559,20 +1817,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     minHeight: 36,
-  },
-  discountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  discountInput: {
-    flex: 1,
-  },
-  discountTypeText: {
-    fontSize: 10,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 2,
   },
   unitText: {
     fontSize: 14,
@@ -1594,12 +1838,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: 6,
   },
-  maxQuantityText: {
+
+  // ===== DISCOUNT CONTAINER =====
+  discountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  discountInput: {
+    flex: 1,
+  },
+  discountTypeText: {
     fontSize: 10,
     color: '#6b7280',
     textAlign: 'center',
     marginTop: 2,
   },
+  maxQuantityText: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+
+  // ===== ACTION BUTTONS =====
   deleteButton: {
     padding: 6,
     alignSelf: 'center',
@@ -1607,17 +1868,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#fecaca',
-  },
-  emptyItems: {
-    padding: 40,
-    alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  emptyItemsText: {
-    marginTop: 8,
-    color: '#9ca3af',
-    fontSize: 16,
-    textAlign: 'center',
   },
   addItemButton: {
     flexDirection: 'row',
@@ -1639,6 +1889,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+
+  // ===== EMPTY STATES =====
+  emptyItems: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  emptyItemsText: {
+    color: '#666',
+    fontSize: 14,
+  },
+
+  // ===== TOTALS SECTION =====
   totalsSection: {
     backgroundColor: 'white',
     borderRadius: 8,
@@ -1655,13 +1918,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
-  grandTotal: {
-    borderBottomWidth: 0,
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#d1d5db',
-  },
   totalLabel: {
     fontSize: 16,
     color: '#6b7280',
@@ -1670,6 +1926,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1f2937',
     fontWeight: '500',
+  },
+  grandTotal: {
+    borderBottomWidth: 0,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#d1d5db',
   },
   grandTotalLabel: {
     fontSize: 18,
@@ -1681,21 +1944,49 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#007AFF',
   },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
+
+  // ===== SUBMIT BUTTON =====
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 24,
     marginBottom: 20,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#9ca3af',
+  button: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 6,
   },
-  saveButtonText: {
-    color: 'white',
+  buttonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  primaryButton: {
+    backgroundColor: '#007AFF',
+  },
+  secondaryButton: {
+    backgroundColor: '#333',
+  },
+  buttonDisabled: {
+    backgroundColor: '#C7C7CC',
+  },
+
+  // ===== GLOBAL ERROR CONTAINER =====
+  statusMessage: {
+    backgroundColor: '#ffecb3',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  statusMessageText: {
+    color: '#333',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
   },
   errorContainer: {
     backgroundColor: '#fef2f2',
@@ -1710,6 +2001,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+
+  // ===== MODAL STYLES =====
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1737,6 +2030,8 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
+
+  // ===== MODAL SEARCH =====
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1763,6 +2058,8 @@ const styles = StyleSheet.create({
     padding: 4,
     marginLeft: 8,
   },
+
+  // ===== MODAL LIST STYLES =====
   modalListContent: {
     paddingBottom: 16,
   },
@@ -1787,6 +2084,8 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     flex: 1,
   },
+
+  // ===== PRODUCT INFO IN MODAL =====
   productInfo: {
     flex: 1,
   },
@@ -1805,6 +2104,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9ca3af',
   },
+  returnedInfo: {
+    fontSize: 12,
+    color: '#FF6B35',
+    marginTop: 2,
+  },
+
+  // ===== INVOICE INFO IN MODAL =====
   invoiceInfo: {
     flex: 1,
   },
@@ -1818,19 +2124,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
-  customerInfo: {
-    flex: 1,
-  },
-  customerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1f2937',
-    marginBottom: 2,
-  },
-  customerCode: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+
+  // ===== EMPTY MODAL STATES =====
   emptyModal: {
     padding: 40,
     alignItems: 'center',
@@ -1847,16 +2142,5 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     marginTop: 4,
     textAlign: 'center',
-  },
-  textArea: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
   },
 });

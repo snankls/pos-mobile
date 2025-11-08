@@ -120,7 +120,7 @@ export default function CategoriesScreen() {
     }
   };
     
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const fetchStatus = async () => {
@@ -158,7 +158,7 @@ export default function CategoriesScreen() {
   };
 
   // Unified Add + Edit handler
-  const saveRecord = async () => {
+  const handleSubmit = async () => {
     try {
       setUpdating(true);
       setValidationError('');
@@ -166,6 +166,10 @@ export default function CategoriesScreen() {
       const formData = new FormData();
       formData.append('name', editName.trim());
       formData.append('status', editStatus || 'Active');
+
+      if (isEditing) {
+        formData.append('_method', 'PUT');
+      }
 
       if (editImage) {
         const filename = editImage.split('/').pop();
@@ -177,14 +181,11 @@ export default function CategoriesScreen() {
         } as any);
       }
 
-      let url = isEditing && selectedRecord
+      const url = isEditing && selectedRecord
         ? `${API_URL}/categories/${selectedRecord.id}`
         : `${API_URL}/categories`;
 
-      const res = await axios({
-        method: isEditing ? 'PUT' : 'POST',
-        url,
-        data: formData,
+      const res = await axios.post(url, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -192,11 +193,8 @@ export default function CategoriesScreen() {
         },
       });
 
-      const message = res.data?.message || 'Operation completed successfully';
-      const isSuccess =
-        res.data?.status === 'success' ||
-        res.data?.success === true ||
-        message.toLowerCase().includes('success');
+      const message = res.data?.message || 'record completed successfully';
+      const isSuccess = res.data?.status === 'success' || message.toLowerCase().includes('success');
 
       if (isSuccess) {
         setEditModalVisible(false);
@@ -216,6 +214,64 @@ export default function CategoriesScreen() {
       setUpdating(false);
     }
   };
+  // const handleSubmit = async () => {
+  //   try {
+  //     setUpdating(true);
+  //     setValidationError('');
+
+  //     const formData = new FormData();
+  //     formData.append('name', editName.trim());
+  //     formData.append('status', editStatus || 'Active');
+
+  //     if (editImage) {
+  //       const filename = editImage.split('/').pop();
+  //       const type = filename?.split('.').pop();
+  //       formData.append('image', {
+  //         uri: editImage,
+  //         name: filename,
+  //         type: `image/${type}`,
+  //       } as any);
+  //     }
+
+  //     const url = isEditing && selectedRecord
+  //       ? `${API_URL}/categories/${selectedRecord.id}`
+  //       : `${API_URL}/categories`;
+
+  //     const res = await axios({
+  //       method: isEditing ? 'PUT' : 'POST',
+  //       url,
+  //       data: formData,
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'multipart/form-data',
+  //         'X-Upload-Path': UPLOAD_PATH,
+  //       },
+  //     });
+
+  //     const message = res.data?.message || 'record completed successfully';
+  //     const isSuccess =
+  //       res.data?.status === 'success' ||
+  //       res.data?.success === true ||
+  //       message.toLowerCase().includes('success');
+
+  //     if (isSuccess) {
+  //       setEditModalVisible(false);
+  //       await fetchRecords();
+  //       resetForm();
+  //     } else {
+  //       setValidationError(message || 'Something went wrong.');
+  //     }
+  //   } catch (err: any) {
+  //     console.error('Save record error:', err.response?.data || err.message);
+  //     const message =
+  //       err.response?.data?.errors?.name?.[0] ||
+  //       err.response?.data?.message ||
+  //       'Something went wrong.';
+  //     setValidationError(message);
+  //   } finally {
+  //     setUpdating(false);
+  //   }
+  // };
 
   const resetForm = () => {
     setEditName('');
@@ -416,7 +472,7 @@ export default function CategoriesScreen() {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalBackground}>
-            {/* ✅ Close Icon */}
+            {/* Close Icon */}
             <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setModalVisible(false)}
@@ -424,7 +480,7 @@ export default function CategoriesScreen() {
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            {/* ✅ Full Image */}
+            {/* Full Image */}
             {selectedImage ? (
               <Image
                 source={{ uri: selectedImage }}
@@ -440,16 +496,6 @@ export default function CategoriesScreen() {
             )}
           </View>
         </Modal>
-        
-        {/* <Image
-          source={
-            item.image_url
-              ? { uri: `${IMAGE_URL}/categories/${item.image_url}` }
-              : require('../../../assets/images/placeholder.jpg')
-          }
-          style={styles.imageContainer}
-          resizeMode="cover"
-        /> */}
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.name }}><Text style={styles.cellText}>{item.name}</Text></View>
@@ -600,7 +646,7 @@ export default function CategoriesScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Image</Text>
+                <Text style={styles.fieldLabel}>Image <Text style={styles.imageNote}>(Max size 5MB)</Text></Text>
                 <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
                   <Ionicons name="image-outline" size={20} color="#007AFF" />
                   <Text style={styles.uploadButtonText}>Select Image</Text>
@@ -617,13 +663,13 @@ export default function CategoriesScreen() {
 
               <TouchableOpacity
                 style={[styles.saveButton, updating && styles.saveButtonDisabled]}
-                onPress={saveRecord}
+                onPress={handleSubmit}
                 disabled={updating}
               >
                 {updating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save Changing</Text>
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -682,7 +728,14 @@ export default function CategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
+  },
+  
   headerRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -692,15 +745,76 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA'
   },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#1C1C1E' },
-  addButton: { 
-    backgroundColor: '#007AFF', 
-    paddingHorizontal: 16,
-    paddingVertical: 8, 
-    borderRadius: 8 
+  
+  tableHeader: { 
+    flexDirection: 'row', 
+    padding: 12, 
+    backgroundColor: '#F8F9FA', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E5E5EA',
   },
-  addButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-
+  
+  tableRow: { 
+    flexDirection: 'row', 
+    padding: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F2F2F7', 
+    alignItems: 'center', 
+  },
+  
+  noDataContainer: {
+    padding: 22,
+  },
+  
+  errorContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
+  },
+  
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  
+  keyboardAvoidingView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '90%',
+  },
+  
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  modalBody: {
+    padding: 16,
+  },
+  
+  modalBodyWithPadding: {
+    paddingBottom: 30,
+  },
+  
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -710,169 +824,155 @@ const styles = StyleSheet.create({
     margin: 10,
     height: 40,
   },
-  searchInput: {
+  
+  modalBackground: {
     flex: 1,
-    fontSize: 14,
-    color: '#111827',
-    paddingVertical: 5,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  title: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#1C1C1E' 
   },
   
-  // Table Styles
-  tableHeader: { 
-    flexDirection: 'row', 
-    padding: 12, 
-    backgroundColor: '#F8F9FA', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E5E5EA',
+  addButtonText: { 
+    color: '#fff', 
+    fontSize: 14, 
+    fontWeight: '600' 
   },
-  tableRow: { 
-    flexDirection: 'row', 
-    padding: 12, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#F2F2F7', 
-    alignItems: 'center', 
+  
+  headerText: { 
+    fontWeight: '600', 
+    fontSize: 14, 
+    color: '#1C1C1E', 
+    paddingHorizontal: 10 
   },
-  headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
-  cellText: { fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
-  imageContainer: { width: 40, height: 40, borderRadius: 6, marginHorizontal: 10 },
-  statusBadge: { 
-    marginHorizontal: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12, 
-    alignSelf: 'flex-start',
+  
+  cellText: { 
+    fontSize: 14, 
+    color: '#1C1C1E', 
+    paddingHorizontal: 10 
   },
+  
   statusText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 12,
   },
-  actionButtons: { flexDirection: 'row', gap: 8 },
-  actionButton: { padding: 6, borderRadius: 6 },
-  editButton: { backgroundColor: '#E8F2FF' },
-  deleteButton: { backgroundColor: '#FFEAEA' },
-
-  noDataContainer: {
-    padding: 22,
-  },
+  
   noDataText: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'left',
   },
   
-  // Error Styles
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: {
     color: '#FF3B30',
     fontSize: 13,
     marginTop: 4,
   },
-  retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  retryButtonText: { color: '#fff', fontWeight: '600' },
   
-  // Modal Styles
-  modalBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  retryButtonText: { 
+    color: '#fff', 
+    fontWeight: '600' 
   },
-  keyboardAvoidingView: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBodyWithPadding: {
-    paddingBottom: 30,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
+  
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1C1C1E',
   },
-  closeButton: {
-    padding: 4,
-  },
-  modalBody: {
-    padding: 16,
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
+  
   fieldLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
     marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+
+  imageNote: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '400',
+  },
+  
+  modalTriggerText: {
+    color: '#1C1C1E',
     fontSize: 16,
-    backgroundColor: '#F8F9FA',
   },
-  inputError: {
-    borderColor: '#FF3B30',
+  
+  modalTriggerPlaceholder: {
+    fontSize: 16,
   },
-  pagination: { 
-    marginTop: 15,
-    marginBottom: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
+  
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
   },
-  paginationInfo: { 
-    marginBottom: 5 
+  
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  paginationText: { 
-    fontSize: 12, 
-    color: '#555' 
+  
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
   },
-  paginationControls: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
+  
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
   },
-  pageButtonDisabled: { 
-    opacity: 0.5 
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
+  addButton: { 
+    backgroundColor: '#007AFF', 
+    paddingHorizontal: 16,
+    paddingVertical: 8, 
+    borderRadius: 8 
   },
-  pageButtonText: { 
-    fontSize: 14, 
-    color: '#007AFF', 
-    marginHorizontal: 4 
+  
+  retryButton: { 
+    backgroundColor: '#007AFF', 
+    paddingHorizontal: 20, 
+    paddingVertical: 10, 
+    borderRadius: 8 
   },
-  pageIndicatorText: { 
-    fontSize: 14, 
-    color: '#333', 
-    marginHorizontal: 10 
-  },
-  pageButton: { 
+  
+  actionButtons: { 
     flexDirection: 'row', 
-    alignItems: 'center' 
+    gap: 8 
+  },
+  
+  actionButton: { 
+    padding: 6, 
+    borderRadius: 6 
+  },
+  
+  editButton: { 
+    backgroundColor: '#E8F2FF' 
+  },
+  
+  deleteButton: { 
+    backgroundColor: '#FFEAEA' 
+  },
+  
+  closeButton: {
+    padding: 4,
   },
   
   modalTrigger: {
@@ -886,13 +986,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
   },
-  modalTriggerText: {
-    color: '#1C1C1E',
-    fontSize: 16,
-  },
-  modalTriggerPlaceholder: {
-    fontSize: 16,
-  },
+  
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -903,20 +997,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#F0F7FF',
   },
-  uploadButtonText: {
-    color: '#007AFF',
-    fontSize: 15,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  previewImage: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
+  
   saveButton: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
@@ -926,49 +1007,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
+  
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalListContent: {
-    paddingBottom: 16,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  selectedModalItem: {
-    backgroundColor: '#F0F8FF',
-  },
-  modalItemText: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
-
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '90%',
-    height: '80%',
-    borderRadius: 10,
-  },
+  
   modalCloseButton: {
     position: 'absolute',
     top: 40,
@@ -977,5 +1020,78 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 6,
+  },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
+  input: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  imageContainer: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 6, 
+    marginHorizontal: 10 
+  },
+  
+  previewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+
+  // ==============================
+  // STATUS & BADGE STYLES
+  // ==============================
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
+  },
+
+  // ==============================
+  // MODAL & LIST STYLES
+  // ==============================
+  modalListContent: {
+    paddingBottom: 16,
+  },
+  
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  
+  selectedModalItem: {
+    backgroundColor: '#F0F8FF',
   },
 });

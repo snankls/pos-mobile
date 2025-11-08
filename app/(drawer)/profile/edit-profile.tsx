@@ -44,7 +44,6 @@ export default function EditProfileScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [cities, setCities] = useState<any[]>([]);
   const [filteredCities, setFilteredCities] = useState<any[]>([]);
-  const [image, setImage] = useState<any>(null);
   const [imageFile, setImageFile] = useState<any>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -52,9 +51,8 @@ export default function EditProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(true);
-
-  const [successMsg, setSuccessMsg] = useState('');
-  const [globalError, setGlobalError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [globalErrorMessage, setGlobalErrorMessage] = useState('');
 
   // Modal states
   const [cityModalVisible, setCityModalVisible] = useState(false);
@@ -96,14 +94,14 @@ export default function EditProfileScreen() {
       }
     } catch (err: any) {
       console.error('Error loading current user:', err.response?.data || err.message);
-      setGlobalError('Failed to load user data.');
+      setGlobalErrorMessage('Failed to load user data.');
     }
   };
 
   // 🔹 Fetch cities
   const fetchCities = async () => {
     try {
-      const res = await axios.get(`${API_URL}/cities`, {
+      const res = await axios.get(`${API_URL}/active/cities`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const citiesData = res.data.data || res.data;
@@ -114,7 +112,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   // 🔹 Handle input change
@@ -196,36 +194,37 @@ export default function EditProfileScreen() {
   // Submit handler - update the success part
   const handleSubmit = async () => {
     setErrors({});
-    setGlobalError('');
-    setSuccessMsg('');
-    
+    setGlobalErrorMessage('');
+    setSuccessMessage('');
+
     if (!userId) {
-      setGlobalError('User ID not found.');
+      Alert.alert('Error', 'User ID not found.');
       return;
     }
 
     try {
       setLoading(true);
       const formData = new FormData();
-      
-      // Append all form fields
+
+      // ✅ Append all fields but skip empty or null values (important for nullable date)
       Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formData.append(key, String(value));
+        if (value === '' || value === undefined || value === null) {
+          return; // skip empty fields
         }
+        formData.append(key, String(value));
       });
 
-      // Handle image upload properly
+      // ✅ Handle image upload
       if (imageFile) {
-        // For React Native, use the imageFile object directly
         formData.append('user_image', imageFile);
       }
 
-      // Use 'delete_image' instead of 'isImageDeleted' to match your backend
+      // ✅ Handle image delete flag
       if (isImageDeleted) {
         formData.append('delete_image', '1');
       }
 
+      // ✅ Submit the form
       const res = await axios.post(`${API_URL}/users/${userId}?_method=PUT`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -235,36 +234,31 @@ export default function EditProfileScreen() {
         timeout: 30000,
       });
 
-      setSuccessMsg(res.data.message || 'Profile updated successfully.');
-      
-      // Refresh user data to get updated image
+      // ✅ Show success message smoothly
+      setSuccessMessage(res.data?.message || 'Profile updated successfully!');
+
+      // Auto-hide message after fadeout
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+
+      // ✅ Refresh updated user info
       await fetchCurrentUser();
-      
-      // Reset the image deletion flag after successful update
+
+      // ✅ Reset image deletion flags
       setIsImageDeleted(false);
       setImageFile(null);
-      
     } catch (err: any) {
-      console.error('User update failed:', err);
+      console.error('Update failed:', err.response?.data || err.message);
 
-      // Check if it's an HTML response (like Symfony debug page)
-      if (err.response?.data && typeof err.response.data === 'string' && err.response.data.includes('Sfdump')) {
-        setGlobalError('Server error: Please check the server logs or try again later.');
-        console.error('HTML error response detected - likely server-side error');
-      } else if (axios.isAxiosError(err)) {
-        if (err.response?.status === 422) {
-          // Validation errors from Laravel
-          setErrors(err.response.data.errors || {});
-        } else if (err.response?.data?.message) {
-          // Other Laravel messages
-          setGlobalError(err.response.data.message);
-        } else if (err.message === 'Network Error') {
-          setGlobalError('Network error — please check your internet connection.');
-        } else {
-          setGlobalError('Unexpected error — please try again.');
-        }
+      if (err.response?.status === 422) {
+        setErrors(err.response.data.errors || {});
+      } else if (err.response?.data?.message) {
+        setGlobalErrorMessage(err.response.data.message);
+      } else if (err.message === 'Network Error') {
+        setGlobalErrorMessage('Network error — please check your internet connection.');
       } else {
-        setGlobalError('Something went wrong. Please try again.');
+        setGlobalErrorMessage('Something went wrong. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -404,7 +398,7 @@ export default function EditProfileScreen() {
 
         {/* Image Upload */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Image</Text>
+          <Text style={styles.label}>Image <Text style={styles.imageNote}>(Max size 5MB)</Text></Text>
           <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
             <Ionicons name="image-outline" size={20} color="#007AFF" />
             <Text style={styles.uploadButtonText}>Select Image</Text>
@@ -438,8 +432,19 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
 
         {/* Global Messages */}
-        {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}
-        {successMsg ? <Text style={styles.success}>{successMsg}</Text> : null}
+        {globalErrorMessage ? (
+          <View style={styles.globalErrorContainer}>
+            <Ionicons name="warning-outline" size={20} color="#fff" />
+            <Text style={styles.globalError}>{globalErrorMessage}</Text>
+          </View>
+        ) : null}
+
+        {successMessage ? (
+          <View style={styles.successContainer}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+            <Text style={styles.success}>{successMessage}</Text>
+          </View>
+        ) : null}
 
         {/* City Selection Modal */}
         <Modal
@@ -569,16 +574,74 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   container: {
     padding: 16,
     backgroundColor: '#fff',
   },
+  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
+  
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
+  },
+  
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  imageContainer: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  
+  closeIconContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    padding: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
   title: {
     flex: 1,
     textAlign: 'center',
@@ -586,15 +649,125 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  fieldGroup: {
-    marginBottom: 16,
-  },
+  
   label: {
     fontSize: 15,
     fontWeight: '500',
     marginBottom: 6,
     color: '#333',
   },
+
+  imageNote: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '400',
+  },
+  
+  modalTriggerText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  
+  modalTriggerPlaceholder: {
+    fontSize: 16,
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  
+  globalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  
+  globalError: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#34C759',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  
+  success: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  
+  // globalError: {
+  //   color: '#fff',
+  //   backgroundColor: '#FF3B30',
+  //   textAlign: 'center',
+  //   padding: 12,
+  //   borderRadius: 6,
+  //   marginTop: 10,
+  // },
+  
+  // success: {
+  //   color: '#fff',
+  //   backgroundColor: '#34C759',
+  //   textAlign: 'center',
+  //   padding: 12,
+  //   borderRadius: 6,
+  //   marginTop: 10,
+  // },
+  
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  
+  emptyModalText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -604,9 +777,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#F8F9FA',
   },
+  
   inputError: {
     borderColor: '#FF3B30',
   },
+  
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -618,18 +806,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
   },
-  modalTriggerText: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
-  modalTriggerPlaceholder: {
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    marginTop: 4,
-  },
+  
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -640,35 +817,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F0F7FF',
   },
-  uploadButtonText: {
-    color: '#007AFF',
-    fontSize: 15,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  imageContainer: {
-    position: 'relative',
-    width: 100,
-    height: 100,
-    marginTop: 10,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  closeIconContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: 2,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 1 },
-  },
+  
   saveButton: {
     backgroundColor: '#007AFF',
     padding: 16,
@@ -676,91 +825,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  globalError: {
-    color: '#fff',
-    backgroundColor: '#FF3B30',
-    textAlign: 'center',
-    padding: 12,
-    borderRadius: 6,
-    marginTop: 10,
-  },
-  success: {
-    color: '#fff',
-    backgroundColor: '#34C759',
-    textAlign: 'center',
-    padding: 12,
-    borderRadius: 6,
-    marginTop: 10,
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-  },
+  
   closeButton: {
     padding: 4,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
+  
   clearSearchButton: {
     padding: 4,
     marginLeft: 8,
   },
+
+  // ==============================
+  // MODAL & LIST STYLES
+  // ==============================
   modalListContent: {
     paddingBottom: 16,
   },
+  
   modalListContentEmpty: {
     paddingBottom: 16,
     flexGrow: 1,
     justifyContent: 'center',
   },
+  
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -769,21 +856,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F2F2F7',
   },
+  
   selectedModalItem: {
     backgroundColor: '#F0F8FF',
   },
-  modalItemText: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
+  
   emptyModal: {
     alignItems: 'center',
     padding: 40,
   },
-  emptyModalText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 12,
-    textAlign: 'center',
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  
+  searchIcon: {
+    marginRight: 8,
   },
 });

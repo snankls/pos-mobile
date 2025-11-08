@@ -102,7 +102,7 @@ export default function CustomersSetupScreen() {
         setStatusOptions(statusArray);
       }
     } catch (err: any) {
-      console.error('Fetch status error:', err);
+      console.log('Fetch status error:', err);
     }
   };
 
@@ -129,10 +129,10 @@ export default function CustomersSetupScreen() {
     setCitySearch('');
   };
 
-  // ✅ Fetch Cities
+  // Fetch Cities
   const fetchCities = async () => {
     try {
-      const response = await axios.get(`${API_URL}/cities`, {
+      const response = await axios.get(`${API_URL}/active/cities`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -142,7 +142,7 @@ export default function CustomersSetupScreen() {
       setCities(citiesData);
       setFilteredCities(citiesData);
     } catch (error) {
-      console.error('Error loading cities:', error);
+      console.log('Error loading cities:', error);
       setCities([]);
       setFilteredCities([]);
     }
@@ -190,7 +190,7 @@ export default function CustomersSetupScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const handleChange = (field: string, value: any) => {
@@ -258,7 +258,12 @@ export default function CustomersSetupScreen() {
       const formData = new FormData();
 
       Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
+        if (value === '' || value === null || value === undefined) return;
+
+        // Convert numeric fields safely
+        if (['credit_balance', 'credit_limit', 'city_id'].includes(key)) {
+          formData.append(key, value ? String(Number(value)) : '0');
+        } else {
           formData.append(key, value);
         }
       });
@@ -297,7 +302,7 @@ export default function CustomersSetupScreen() {
         },
       });
 
-      // ✅ Handle success
+      // Handle success
       if (response.status === 200 || response.status === 201) {
         resetForm();
         setImagePreview(null);
@@ -308,7 +313,7 @@ export default function CustomersSetupScreen() {
         setGlobalError(response.data.message || 'Unexpected response from server.');
       }
     } catch (error: any) {
-      console.error('Error saving customer:', error);
+      console.log('Error saving customer:', error);
 
       if (error.response?.status === 422) {
         setFormErrors(error.response.data.errors || {});
@@ -358,6 +363,7 @@ export default function CustomersSetupScreen() {
         <TextInput 
           style={[styles.input, formErrors.cnic && styles.inputError]} 
           value={form.cnic} 
+          keyboardType="numeric"
           onChangeText={(t) => handleChange('cnic', t)} 
         />
         {formErrors.cnic && <Text style={styles.errorText}>{formErrors.cnic[0]}</Text>}
@@ -379,6 +385,7 @@ export default function CustomersSetupScreen() {
         <TextInput 
           style={styles.input} 
           value={form.mobile_number} 
+          keyboardType="numeric"
           onChangeText={(t) => handleChange('mobile_number', t)} 
         />
       </View>
@@ -389,6 +396,7 @@ export default function CustomersSetupScreen() {
         <TextInput 
           style={styles.input} 
           value={form.phone_number} 
+          keyboardType="numeric"
           onChangeText={(t) => handleChange('phone_number', t)} 
         />
       </View>
@@ -470,7 +478,7 @@ export default function CustomersSetupScreen() {
 
       {/* Image Upload */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Image</Text>
+        <Text style={styles.label}>Image <Text style={styles.imageNote}>(Max size 5MB)</Text></Text>
         <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
           <Ionicons name="image-outline" size={20} color="#007AFF" />
           <Text style={styles.uploadButtonText}>Select Image</Text>
@@ -499,7 +507,7 @@ export default function CustomersSetupScreen() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveButtonText}>Save Changing</Text>
+          <Text style={styles.saveButtonText}>Save Changes</Text>
         )}
       </TouchableOpacity>
 
@@ -628,19 +636,83 @@ export default function CustomersSetupScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   container: {
     padding: 16,
     backgroundColor: '#fff',
   },
+  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  backButton: {
-    padding: 4,
+  
+  fieldGroup: {
+    marginBottom: 16,
   },
+  
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
+  },
+  
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  imageContainer: {
+    position: 'relative',
+    width: 150,
+    height: 150,
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  
+  closeIconContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    padding: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  
+  emptyModal: {
+    alignItems: 'center',
+    padding: 40,
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
   title: {
     flex: 1,
     textAlign: 'center',
@@ -648,15 +720,78 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  fieldGroup: {
-    marginBottom: 16,
-  },
+  
   label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
     color: '#1C1C1E',
   },
+
+  imageNote: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '400',
+  },
+  
+  modalTriggerText: {
+    color: '#1C1C1E',
+    fontSize: 16,
+  },
+  
+  modalTriggerPlaceholder: {
+    fontSize: 16,
+  },
+  
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  
+  globalError: {
+    color: '#fff',
+    backgroundColor: '#FF3B30',
+    textAlign: 'center',
+    padding: 12,
+    borderRadius: 6,
+    marginTop: 10,
+  },
+  
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  
+  emptyModalText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -666,13 +801,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#F8F9FA',
   },
+  
   textArea: {
     height: 80,
     textAlignVertical: 'top',
   },
+  
   inputError: {
     borderColor: '#FF3B30',
   },
+  
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
+  backButton: {
+    padding: 4,
+  },
+  
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -684,13 +839,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
   },
-  modalTriggerText: {
-    color: '#1C1C1E',
-    fontSize: 16,
-  },
-  modalTriggerPlaceholder: {
-    fontSize: 16,
-  },
+  
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -701,35 +850,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#F0F7FF',
   },
-  uploadButtonText: {
-    color: '#007AFF',
-    fontSize: 15,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  imageContainer: {
-    position: 'relative',
-    width: 150,
-    height: 150,
-    marginTop: 10,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  closeIconContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: 2,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 1 },
-  },
+  
   saveButton: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
@@ -739,92 +860,33 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
+  
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  globalError: {
-    color: '#fff',
-    backgroundColor: '#FF3B30',
-    textAlign: 'center',
-    padding: 12,
-    borderRadius: 6,
-    marginTop: 10,
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-  },
   closeButton: {
     padding: 4,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
+  
   clearSearchButton: {
     padding: 4,
     marginLeft: 8,
   },
+
+  // ==============================
+  // MODAL & LIST STYLES
+  // ==============================
   modalListContent: {
     paddingBottom: 16,
   },
+  
   modalListContentEmpty: {
     paddingBottom: 16,
     flexGrow: 1,
     justifyContent: 'center',
   },
+  
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -833,21 +895,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F2F2F7',
   },
+  
   selectedModalItem: {
     backgroundColor: '#F0F8FF',
   },
-  modalItemText: {
-    fontSize: 16,
-    color: '#1C1C1E',
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
-  emptyModal: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyModalText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 12,
-    textAlign: 'center',
+  
+  searchIcon: {
+    marginRight: 8,
   },
 });

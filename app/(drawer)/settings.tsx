@@ -34,8 +34,9 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
+  const [globalErrorMessage, setGlobalErrorMessage] = useState('');
 
-  // ✅ Only one useEffect to fetch settings
+  // Only one useEffect to fetch settings
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -61,7 +62,7 @@ export default function SettingsScreen() {
     }
   }
 
-  // ✅ Loader placed AFTER hooks, so order is stable
+  // Loader placed AFTER hooks, so order is stable
   if (loading) return <LoadingScreen />;
 
   const handleChange = (field: keyof SettingsForm, value: string) => {
@@ -91,14 +92,21 @@ export default function SettingsScreen() {
         { data_name: 'currency', data_value: form.currency },
       ];
 
-      await axios.post(`${API_URL}/settings`, payload, {
+      const response = await axios.post(`${API_URL}/settings`, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
         },
       });
 
-      setSuccessMessage('Settings updated successfully.');
+      //setSuccessMessage('Settings updated successfully.');
+      setSuccessMessage(response.data?.message || 'Record updated successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+
     } catch (err: any) {
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors || {});
@@ -117,74 +125,102 @@ export default function SettingsScreen() {
     >
       <View style={styles.container}>
         {/* Invoice Prefix */}
-        <Text style={styles.label}>Invoice Number Prefix <Text style={styles.errorText}>*</Text></Text>
-        <TextInput
-          style={styles.input}
-          value={form.invoice_prefix}
-          onChangeText={(text) => handleChange('invoice_prefix', text)}
-        />
-        {errors.invoice_prefix && <Text style={styles.error}>{errors.invoice_prefix[0]}</Text>}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Invoice Number Prefix <Text style={styles.errorText}>*</Text></Text>
+          <TextInput
+            style={styles.input}
+            value={form.invoice_prefix}
+            onChangeText={(text) => handleChange('invoice_prefix', text)}
+          />
+          {errors.invoice_prefix && <Text style={styles.error}>{errors.invoice_prefix[0]}</Text>}
+        </View>
 
         {/* Invoice Count */}
-        <Text style={styles.label}>Invoice Number Limit <Text style={styles.errorText}>*</Text></Text>
-        <TextInput
-          style={styles.input}
-          value={form.invoice_limit}
-          onChangeText={(text) => handleChange('invoice_limit', text)}
-          keyboardType="numeric"
-        />
-        {errors.invoice_limit && <Text style={styles.error}>{errors.invoice_limit[0]}</Text>}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Invoice Number Limit <Text style={styles.errorText}>*</Text></Text>
+          <TextInput
+            style={styles.input}
+            value={form.invoice_limit}
+            onChangeText={(text) => handleChange('invoice_limit', text)}
+            keyboardType="numeric"
+          />
+          {errors.invoice_limit && <Text style={styles.error}>{errors.invoice_limit[0]}</Text>}
+        </View>
 
         {/* Currency */}
-        <Text style={styles.label}>Currency <Text style={styles.errorText}>*</Text></Text>
-        <TextInput
-          style={styles.input}
-          value={form.currency}
-          onChangeText={(text) => handleChange('currency', text)}
-        />
-        {errors.currency && <Text style={styles.error}>{errors.currency[0]}</Text>}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Currency <Text style={styles.errorText}>*</Text></Text>
+          <TextInput
+            style={styles.input}
+            value={form.currency}
+            onChangeText={(text) => handleChange('currency', text)}
+          />
+          {errors.currency && <Text style={styles.error}>{errors.currency[0]}</Text>}
+        </View>
 
         {/* Submit */}
-        <TouchableOpacity
-          style={[styles.button, isLoading && { opacity: 0.7 }]}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
+        <View style={styles.fieldGroup}>
+          <TouchableOpacity
+            style={[styles.button, isLoading && { opacity: 0.7 }]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
               <Text style={styles.buttonText}>Save Changes</Text>
-            </>
-          )}
-        </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        </View>
 
-        {successMessage ? <Text style={styles.success}>{successMessage}</Text> : null}
+        {/* Global Messages */}
+        {globalErrorMessage ? (
+          <View style={styles.globalErrorContainer}>
+            <Ionicons name="warning-outline" size={20} color="#fff" />
+            <Text style={styles.globalError}>{globalErrorMessage}</Text>
+          </View>
+        ) : null}
+
+        {successMessage ? (
+          <View style={styles.successContainer}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+            <Text style={styles.success}>{successMessage}</Text>
+          </View>
+        ) : null}
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   scrollContainer: {
     flexGrow: 1,
     backgroundColor: '#fff',
     padding: 16,
   },
+  
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
+
+  // ==============================
+  // FORM & FIELD STYLES
+  // ==============================
   fieldGroup: {
-    marginBottom: 10,
+    marginBottom: 20,
   },
+  
   label: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 16,
     marginBottom: 8,
     color: '#1C1C1E',
   },
+  
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -192,12 +228,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#F8F9FA',
   },
-  error: { color: 'red', marginTop: 4 },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    marginTop: 4,
-  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -205,9 +239,59 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 6,
     justifyContent: 'center',
-    marginTop: 24,
   },
-  buttonText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
-  loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  success: { color: 'green', marginTop: 16, fontWeight: 'bold', textAlign: 'center' },
+  
+  buttonText: { 
+    color: '#fff', 
+    marginLeft: 6, 
+    fontWeight: '600' 
+  },
+
+  // ==============================
+  // STATUS & MESSAGE STYLES
+  // ==============================
+  error: { 
+    color: 'red', 
+    marginTop: 4 
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  
+  globalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  
+  globalError: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#34C759',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  
+  success: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
 });

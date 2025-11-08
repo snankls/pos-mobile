@@ -77,14 +77,14 @@ export default function StocksViewScreen() {
     }
   };
   
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return { color: '#fff', bgColor: '#34C759' };
-      case 'inactive': return { color: '#fff', bgColor: '#FF3B30' };
-      default: return { color: '#fff', bgColor: '#34C759' };
+    switch (status?.toLowerCase()) {
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      default: return '#34C759';
     }
   };
 
@@ -129,8 +129,6 @@ export default function StocksViewScreen() {
     );
   }
 
-  const statusInfo = getStatusColor(stock.status);
-
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -159,8 +157,8 @@ export default function StocksViewScreen() {
               <Text style={styles.stockNumber}>{stock.stock_number}</Text>
               <Text style={styles.stockDate}>{formatDate(stock.stock_date)}</Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}>
-              <Text style={[styles.statusText, { color: statusInfo.color }]}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(stock.status) }]}>
+              <Text style={styles.statusText}>
                 {stock.status}
               </Text>
             </View>
@@ -170,21 +168,15 @@ export default function StocksViewScreen() {
         {/* Stock Summary */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Ionicons name="cube-outline" size={24} color="#6366F1" />
-            <Text style={styles.statValue}>{formatQuantity(parseFloat(stock.total_stock))}</Text>
-            <Text style={styles.statLabel}>Total Stock</Text>
+            <Ionicons name="list-outline" size={24} color="#8B5CF6" />
+            <Text style={styles.statValue}>{stockItems.length}</Text>
+            <Text style={styles.statLabel}>Items</Text>
           </View>
           
           <View style={styles.statCard}>
             <Ionicons name="cash-outline" size={24} color="#10B981" />
             <Text style={styles.statValue}>{settings.currency}{formatCurrency(parseFloat(stock.total_price))}</Text>
             <Text style={styles.statLabel}>Total Value</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <Ionicons name="list-outline" size={24} color="#8B5CF6" />
-            <Text style={styles.statValue}>{stockItems.length}</Text>
-            <Text style={styles.statLabel}>Items</Text>
           </View>
         </View>
 
@@ -271,16 +263,25 @@ export default function StocksViewScreen() {
           </View>
           
           <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="calendar-outline" 
-              label="Stock Date" 
-              value={formatDate(stock.stock_date)} 
-            />
-            <DetailItem 
-              icon="time-outline" 
-              label="Created Date" 
-              value={formatDate(stock.created_at)} 
-            />
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Stock Date</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{formatDate(stock.stock_date)}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="time-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Created Date</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{formatDate(stock.created_at)}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -301,40 +302,19 @@ export default function StocksViewScreen() {
   );
 }
 
-// Detail Item Component
-const DetailItem = ({ icon, label, value }: any) => (
-  <View style={styles.detailItem}>
-    <View style={styles.detailIcon}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
-    </View>
-    <View style={styles.detailContent}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={1}>
-        {value || '-'}
-      </Text>
-    </View>
-  </View>
-);
-
 const styles = StyleSheet.create({
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  
   container: {
     flex: 1,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
+  
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -342,19 +322,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#F9FAFB',
   },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -365,34 +333,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-  },
-  backText: {
-    color: '#374151',
-    marginLeft: 4,
-    fontSize: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-  },
-  editText: {
-    color: '#6366F1',
-    marginLeft: 4,
-    fontWeight: '600',
-  },
-  iconButton: {
-    padding: 8,
-  },
+  
   stockHeaderCard: {
     backgroundColor: '#fff',
     margin: 20,
@@ -404,59 +345,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  stockHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  stockNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  stockDate: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  
   statsGrid: {
     flexDirection: 'row',
     marginHorizontal: 20,
     marginBottom: 16,
     gap: 12,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginVertical: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
+  
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -469,60 +365,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginLeft: 8,
-  },
-  sectionContent: {
-    gap: 12,
-  },
+  
   itemsContainer: {
     gap: 12,
   },
-  itemCard: {
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366F1',
-  },
-  itemHeader: {
-    marginBottom: 12,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  itemSku: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  itemDetails: {
-    gap: 6,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
+  
   summaryCard: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -535,61 +382,168 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  summaryLabel: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  grandTotalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 12,
-    marginTop: 4,
-  },
-  grandTotalLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  grandTotalValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#059669',
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailIcon: {
-    width: 32,
-    alignItems: 'center',
-  },
-  detailContent: {
-    flex: 1,
-    marginLeft: 8,
-  },
+  
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
     padding: 20,
     paddingTop: 8,
   },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  
+  errorText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  
+  backText: {
+    color: '#374151',
+    marginLeft: 4,
+    fontSize: 16,
+  },
+  
+  editText: {
+    color: '#6366F1',
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  
+  stockNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  
+  stockDate: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginVertical: 4,
+  },
+  
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginLeft: 8,
+  },
+  
+  itemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  
+  itemSku: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  
+  detailLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  
+  summaryLabel: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  
+  grandTotalLabel: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  
+  grandTotalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  
+  secondaryButtonText: {
+    color: '#6366F1',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+  },
+  
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  
   primaryButton: {
     flex: 1,
     flexDirection: 'row',
@@ -601,6 +555,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
+  
   secondaryButton: {
     flex: 1,
     flexDirection: 'row',
@@ -614,14 +569,96 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     gap: 8,
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+
+  // ==============================
+  // CARD & COMPONENT STYLES
+  // ==============================
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  secondaryButtonText: {
-    color: '#6366F1',
-    fontWeight: '600',
-    fontSize: 16,
+  
+  itemCard: {
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366F1',
+  },
+  
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  // ==============================
+  // LAYOUT & GRID STYLES
+  // ==============================
+  stockHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  
+  sectionContent: {
+    gap: 12,
+  },
+  
+  itemHeader: {
+    marginBottom: 12,
+  },
+  
+  itemDetails: {
+    gap: 6,
+  },
+  
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  
+  grandTotalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 12,
+    marginTop: 4,
+  },
+  
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  
+  detailIcon: {
+    width: 32,
+    alignItems: 'center',
+  },
+  
+  detailContent: {
+    flex: 1,
+    marginLeft: 8,
   },
 });

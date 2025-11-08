@@ -7,11 +7,11 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  ActivityIndicator,
   Alert,
   Platform,
   Modal,
   FlatList,
+  KeyboardAvoidingView
 } from 'react-native';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -58,30 +58,16 @@ export default function ProductsSetupScreen() {
   const [modalType, setModalType] = useState<'category' | 'brand' | 'unit' | 'status' | null>(null);
   const [modalData, setModalData] = useState<any[]>([]);
   const [modalTitle, setModalTitle] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredData, setFilteredData] = useState<any[]>([]);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (token) {
       fetchDropdownData();
-      fetchStatus();
       if (id) fetchProduct(id as string);
       else resetForm();
     }
   }, [token, id]);
-
-  useEffect(() => {
-    // Filter data based on search query
-    if (searchQuery) {
-      const filtered = modalData.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredData(filtered);
-    } else {
-      setFilteredData(modalData);
-    }
-  }, [searchQuery, modalData]);
 
   const resetForm = () => {
     setForm({
@@ -108,9 +94,9 @@ export default function ProductsSetupScreen() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [catRes, brandRes, unitRes] = await Promise.all([
-        axios.get(`${API_URL}/categories`, { headers }),
-        axios.get(`${API_URL}/brands`, { headers }),
-        axios.get(`${API_URL}/units`, { headers }),
+        axios.get(`${API_URL}/active/categories`, { headers }),
+        axios.get(`${API_URL}/active/brands`, { headers }),
+        axios.get(`${API_URL}/active/units`, { headers }),
       ]);
 
       setCategories(catRes.data?.data || catRes.data || []);
@@ -161,9 +147,6 @@ export default function ProductsSetupScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
-  if (loading) return <LoadingScreen />;
-
   const fetchStatus = async () => {
     if (!token) return;
 
@@ -186,6 +169,12 @@ export default function ProductsSetupScreen() {
     }
   };
 
+  useEffect(() => {
+    if (token) {
+      fetchStatus();
+    }
+  }, [token, id]);
+
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
@@ -194,7 +183,6 @@ export default function ProductsSetupScreen() {
   // Modal functions
   const openModal = (type: 'category' | 'brand' | 'unit' | 'status') => {
     setModalType(type);
-    setSearchQuery('');
     
     switch (type) {
       case 'category':
@@ -237,7 +225,6 @@ export default function ProductsSetupScreen() {
     // for status, id and value are same — "Active", "Inactive"
     handleChange(fieldMap[modalType], item.id);
     setModalVisible(false);
-    setSearchQuery('');
   };
 
   const handleStatusSelect = (status: string) => {
@@ -285,10 +272,6 @@ export default function ProductsSetupScreen() {
     }
     
     return selectedUnit ? selectedUnit.name : 'Select Unit';
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
   };
 
   const handlePickImage = async () => {
@@ -414,19 +397,8 @@ export default function ProductsSetupScreen() {
     );
   };
 
-  const renderEmptyModal = () => (
-    <View style={styles.emptyModal}>
-      <Ionicons name="search-outline" size={48} color="#999" />
-      <Text style={styles.emptyModalText}>
-        {searchQuery ? 'No results found' : 'No items available'}
-      </Text>
-      {searchQuery && (
-        <Text style={[styles.emptyModalText, { fontSize: 14 }]}>
-          Try searching with different keywords
-        </Text>
-      )}
-    </View>
-  );
+  // Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -559,7 +531,7 @@ export default function ProductsSetupScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Image</Text>
+        <Text style={styles.label}>Image <Text style={styles.imageNote}>(Max size 5MB)</Text></Text>
         <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage}>
           <Ionicons name="image-outline" size={20} color="#007AFF" />
           <Text style={styles.uploadButtonText}>Select Image</Text>
@@ -576,70 +548,189 @@ export default function ProductsSetupScreen() {
       </View>
 
       <TouchableOpacity onPress={handleSubmit} style={styles.saveButton} disabled={loading}>
-        <Text style={styles.saveButtonText}>Save Changing</Text>
+        <Text style={styles.saveButtonText}>Save Changes</Text>
       </TouchableOpacity>
 
       {globalError ? <Text style={styles.globalError}>{globalError}</Text> : null}
 
-      {/* Status Selection Modal */}
+      {/* Category / Brand / Unit Modal */}
       <Modal
-        visible={statusModalVisible}
+        visible={modalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setStatusModalVisible(false)}
+        onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{modalTitle}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={`Search ${modalTitle.toLowerCase()}...`}
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearSearchButton}
+                >
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+
+            {/* List */}
+            <FlatList
+              data={modalData.filter((item) =>
+                item.name?.toLowerCase().includes(searchQuery.toLowerCase())
+              )}
+              keyExtractor={(item) => item.id?.toString()}
+              renderItem={renderModalItem}
+              contentContainerStyle={styles.modalListContent}
+            />
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Status Selection Modal */}
+      <Modal 
+        visible={statusModalVisible} 
+        transparent 
+        animationType="slide" 
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setStatusModalVisible(false)}
+          />
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Status</Text>
-              <TouchableOpacity 
-                onPress={() => setStatusModalVisible(false)}
-                style={styles.closeButton}
-              >
+              <TouchableOpacity onPress={() => setStatusModalVisible(false)} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
 
             <FlatList
-              data={statusOptions}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.modalItem,
-                    form.status === item.key && styles.selectedModalItem
-                  ]}
-                  onPress={() => handleStatusSelect(item.key)}
-                >
-                  <Text style={styles.modalItemText}>{item.value}</Text>
-                  {form.status === item.key && (
-                    <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-              )}
-              contentContainerStyle={styles.modalListContent}
-            />
+  data={statusOptions}
+  keyExtractor={(item) => item.id}
+  renderItem={({ item }) => {
+    const isSelected = form.status === item.key || form.status === item.id;
+
+    return (
+      <TouchableOpacity
+        style={[styles.modalItem, isSelected && styles.selectedModalItem]}
+        onPress={() => handleStatusSelect(item.key || item.id)}
+      >
+        <Text style={styles.modalItemText}>{item.value}</Text>
+        {isSelected && (
+          <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+        )}
+      </TouchableOpacity>
+    );
+  }}
+  contentContainerStyle={styles.modalListContent}
+/>
+
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   container: {
     padding: 16,
     backgroundColor: '#fff',
   },
+  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  backButton: {
-    padding: 4,
+  
+  fieldGroup: {
+    marginBottom: 16,
   },
+  
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
+  },
+  
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  imageContainer: {
+    position: 'relative',
+    width: 150,
+    height: 150,
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  
+  closeIconContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    padding: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
   title: {
     flex: 1,
     textAlign: 'center',
@@ -647,15 +738,78 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  fieldGroup: {
-    marginBottom: 16,
-  },
+  
   label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
   },
+
+  imageNote: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '400',
+  },
+  
+  modalTriggerText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  
+  modalTriggerPlaceholder: {
+    fontSize: 16,
+  },
+  
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  
+  globalError: {
+    color: '#fff',
+    backgroundColor: '#FF3B30',
+    textAlign: 'center',
+    padding: 12,
+    borderRadius: 6,
+    marginTop: 10,
+  },
+  
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  
+  emptyModalText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -665,9 +819,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#F8F9FA',
   },
+  
   inputError: {
     borderColor: '#FF3B30',
   },
+  
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
+  backButton: {
+    padding: 4,
+  },
+  
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -679,13 +852,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
   },
-  modalTriggerText: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
-  modalTriggerPlaceholder: {
-    fontSize: 16,
-  },
+  
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -696,35 +863,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F0F7FF',
   },
-  uploadButtonText: {
-    color: '#007AFF',
-    fontSize: 15,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  imageContainer: {
-    position: 'relative',
-    width: 150,
-    height: 150,
-    marginTop: 10,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  closeIconContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: 2,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 1 },
-  },
+  
   saveButton: {
     backgroundColor: '#007AFF',
     padding: 16,
@@ -732,88 +871,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  globalError: {
-    color: '#fff',
-    backgroundColor: '#FF3B30',
-    textAlign: 'center',
-    padding: 12,
-    borderRadius: 6,
-    marginTop: 10,
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-  },
+  
   closeButton: {
     padding: 4,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
+  
   clearSearchButton: {
     padding: 4,
     marginLeft: 8,
   },
+
+  // ==============================
+  // MODAL & LIST STYLES
+  // ==============================
   modalListContent: {
     paddingBottom: 16,
   },
-  modalListContentEmpty: {
-    paddingBottom: 16,
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
+  
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -822,21 +896,40 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F2F2F7',
   },
+  
   selectedModalItem: {
     backgroundColor: '#F0F8FF',
   },
-  modalItemText: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
+  
   emptyModal: {
     alignItems: 'center',
     padding: 40,
   },
-  emptyModalText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 12,
-    textAlign: 'center',
+
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+
+  keyboardAvoidingView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  
+  searchIcon: {
+    marginRight: 8,
   },
 });

@@ -42,7 +42,7 @@ export default function UserProfileScreen() {
     }
   };
     
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
   
   if (error || !user) {
@@ -107,26 +107,35 @@ export default function UserProfileScreen() {
           </View>
           
           <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="person-outline" 
-              label="Full Name" 
-              value={user.full_name} 
-            />
-            <DetailItem 
-              icon="at-outline" 
-              label="Username" 
-              value={user.username} 
-            />
-            <DetailItem 
-              icon="male-female-outline" 
-              label="Gender" 
-              value={user.gender} 
-            />
-            <DetailItem 
-              icon="calendar-outline" 
-              label="Date of Birth" 
-              value={user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : 'Not set'} 
-            />
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="person-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Full Name</Text>
+                <Text style={[styles.detailValue]}>{user.full_name}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="at-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Username</Text>
+                <Text style={[styles.detailValue]}>{user.username}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Date of Birth</Text>
+                <Text style={[styles.detailValue]}>{user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : 'Not set'}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -138,16 +147,47 @@ export default function UserProfileScreen() {
           </View>
           
           <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="mail-outline" 
-              label="Email" 
-              value={user.email} 
-            />
-            <DetailItem 
-              icon="call-outline" 
-              label="Phone" 
-              value={user.phone_number || '-'} 
-            />
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="mail-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={[styles.detailValue]}>{user.email || '-'}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="call-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Phone</Text>
+                <Text style={[styles.detailValue]}>{user.phone_number || '-'}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="location-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>City</Text>
+                <Text style={[styles.detailValue]}>{user.city_name || '-'}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="home-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Address</Text>
+                <Text style={[styles.detailValue]}>{user.address || '-'}</Text>
+              </View>
+            </View>
+            
+            {/* 
             <DetailItem 
               icon="location-outline" 
               label="City" 
@@ -160,7 +200,7 @@ export default function UserProfileScreen() {
                 value={user.address} 
                 multiline
               />
-            )}
+            )} */}
           </View>
         </View>
 
@@ -187,40 +227,19 @@ export default function UserProfileScreen() {
   );
 }
 
-// Detail Item Component
-const DetailItem = ({ icon, label, value, multiline = false }: any) => (
-  <View style={styles.detailItem}>
-    <View style={styles.detailIcon}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
-    </View>
-    <View style={styles.detailContent}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={[styles.detailValue, multiline && { flexWrap: 'wrap' }]} numberOfLines={multiline ? 3 : 1}>
-        {value || '-'}
-      </Text>
-    </View>
-  </View>
-);
-
 const styles = StyleSheet.create({
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  
   container: {
     flex: 1,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
+  
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -228,19 +247,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#F9FAFB',
   },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  
   heroCard: {
     backgroundColor: '#fff',
     margin: 20,
@@ -253,79 +260,12 @@ const styles = StyleSheet.create({
     elevation: 4,
     alignItems: 'center',
   },
+  
   avatarContainer: {
     position: 'relative',
     marginBottom: 16,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#E5E7EB',
-  },
-  statusBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  activeBadge: {
-    backgroundColor: '#6B7280',
-  },
-  inactiveBadge: {
-    backgroundColor: '#F3F4F6',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  userUsername: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  companyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
-  },
-  companyText: {
-    fontSize: 12,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
+  
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -338,78 +278,103 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginLeft: 8,
-  },
+  
   sectionContent: {
     gap: 12,
   },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailIcon: {
-    width: 32,
-    alignItems: 'center',
-  },
-  detailContent: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  detailValue: {
-    fontSize: 16,
-    color: '#111827',
-    fontWeight: '500',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginVertical: 4,
-    textAlign: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
+  
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
     padding: 20,
     paddingTop: 8,
   },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  
+  errorText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  
+  userUsername: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  
+  userEmail: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  
+  companyText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginLeft: 8,
+  },
+  
+  detailLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  
+  detailValue: {
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  
+  secondaryButtonText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   primaryButton: {
     flex: 1,
     flexDirection: 'row',
@@ -421,6 +386,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
+  
   secondaryButton: {
     flex: 1,
     flexDirection: 'row',
@@ -434,14 +400,83 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     gap: 8,
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+
+  // ==============================
+  // AVATAR & IMAGE STYLES
+  // ==============================
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
-  secondaryButtonText: {
-    color: '#007AFF',
-    fontWeight: '600',
-    fontSize: 14,
+  
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#E5E7EB',
+  },
+
+  // ==============================
+  // BADGE & STATUS STYLES
+  // ==============================
+  statusBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  
+  activeBadge: {
+    backgroundColor: '#6B7280',
+  },
+  
+  inactiveBadge: {
+    backgroundColor: '#F3F4F6',
+  },
+  
+  companyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+
+  // ==============================
+  // LAYOUT & GRID STYLES
+  // ==============================
+  profileInfo: {
+    alignItems: 'center',
+  },
+  
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  
+  detailIcon: {
+    width: 32,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  
+  detailContent: {
+    flex: 1,
+    marginLeft: 8,
   },
 });

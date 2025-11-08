@@ -15,9 +15,8 @@ import {
 } from "react-native";
 import axios from "axios";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function ForgotPassword() {
+export default function ForgotPasswordScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const NG_URL = process.env.EXPO_PUBLIC_NG_URL;
   
@@ -71,7 +70,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -145,7 +144,7 @@ export default function ForgotPassword() {
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

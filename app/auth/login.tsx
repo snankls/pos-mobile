@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Login() {
+export default function LoginScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   const router = useRouter();
@@ -47,119 +47,31 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ email: identifier, password }),
       });
-      const data = await response.json();
+
+      const data = await response.json().catch(() => ({})); // handle invalid JSON safely
 
       if (response.ok && data?.data?.authorisation?.token) {
         await login(data.data.authorisation.token, data.data.user);
         setMessage({ text: 'Login successful!', type: 'success' });
       } else {
-        setMessage({ text: data.message || 'Login failed', type: 'error' });
+        const errorMessage =
+          data.error ||
+          data.message ||
+          (response.status === 500
+            ? 'Server connection failed. Please try again later.'
+            : 'Login failed. Please check your credentials.');
+
+        setMessage({ text: errorMessage, type: 'error' });
       }
     } catch (err) {
-      setMessage({ text: 'Network error. Please try again.', type: 'error' });
-    } finally {
+      // When no internet or server offline
+      setMessage({
+        text: 'Unable to connect to server. Check your internet connection and try again.',
+        type: 'error',
+      });
+    }
+    finally {
       setIsLoading(false);
-    }
-  };
-
-  // Error handling for HTTP responses
-  const handleLoginError = (response: Response, data: any) => {
-    switch (response.status) {
-      case 400:
-        setMessage({ 
-          text: 'Bad request. Please check your input.', 
-          type: 'error' 
-        });
-        break;
-      case 401:
-        setMessage({ 
-          text: 'Invalid credentials. Please check your email/username and password.', 
-          type: 'error' 
-        });
-        break;
-      case 403:
-        setMessage({ 
-          text: 'Access denied. Please contact administrator.', 
-          type: 'error' 
-        });
-        break;
-      case 422:
-        const validationErrors = data.errors ? 
-          Object.values(data.errors).flat().join(', ') : 
-          data.message;
-        setMessage({ 
-          text: validationErrors || 'Please check your input.', 
-          type: 'error' 
-        });
-        break;
-      case 429:
-        setMessage({ 
-          text: 'Too many login attempts. Please try again later.', 
-          type: 'error' 
-        });
-        break;
-      case 500:
-        setMessage({ 
-          text: 'Server error. Please try again later.', 
-          type: 'error' 
-        });
-        break;
-      case 503:
-        setMessage({ 
-          text: 'Service temporarily unavailable. Please try again later.', 
-          type: 'error' 
-        });
-        break;
-      default:
-        const errorMessage = data?.message || data?.error || `Login failed (${response.status}). Please try again.`;
-        setMessage({ text: errorMessage, type: 'error' });
-    }
-  };
-
-  // Error handling for exceptions
-  const handleLoginException = (error: any) => {
-    console.error('Login error:', error);
-    
-    if (error.name === 'AbortError') {
-      setMessage({
-        text: 'Request timeout. Please check your connection and try again.',
-        type: 'error',
-      });
-    } else if (error.name === 'TypeError' && error.message.includes('Network request failed')) {
-      setMessage({
-        text: 'Network error. Please check your internet connection.',
-        type: 'error',
-      });
-    } else if (error.name === 'SyntaxError') {
-      setMessage({
-        text: 'Invalid server response. Please contact support.',
-        type: 'error',
-      });
-    } else {
-      setMessage({
-        text: 'An unexpected error occurred. Please try again.',
-        type: 'error',
-      });
-    }
-  };
-
-  // Simple token validation
-  const isValidToken = (token: string): boolean => {
-    try {
-      if (!token || typeof token !== 'string' || token.length < 10) {
-        return false;
-      }
-      
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        return false;
-      }
-      
-      // Basic JWT structure check
-      const payload = JSON.parse(atob(parts[1]));
-      return !!(payload && payload.exp && payload.iat);
-    } catch {
-      return false;
     }
   };
 
@@ -201,7 +113,7 @@ export default function Login() {
                 <Text style={styles.label}>Password</Text>
                 <View style={{ position: 'relative' }}>
                   <TextInput
-                    style={[styles.input, { paddingRight: 40 }]} // Add right padding so text doesn't overlap the icon
+                    style={[styles.input, { paddingRight: 40 }]}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -315,11 +227,6 @@ const styles = StyleSheet.create({
     right: 10,
     top: '50%',
     transform: [{ translateY: -11 }],
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 48,
   },
   forgot: {
     alignSelf: 'flex-end',

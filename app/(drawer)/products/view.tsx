@@ -6,10 +6,11 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Modal
+  Modal,
+  ActivityIndicator
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import LoadingScreen from '../../components/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +28,7 @@ export default function ProductsViewScreen() {
   const [error, setError] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
     if (token && id) {
@@ -54,8 +56,6 @@ export default function ProductsViewScreen() {
       setSettings(settingsObj);
     } catch (error) {
       console.error('Error fetching settings:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -72,13 +72,12 @@ export default function ProductsViewScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const getStockStatus = (stock: number) => {
-    if (stock === 0) return { status: 'Out of Stock', color: '#DC2626', bgColor: '#FEE2E2' };
-    if (stock <= 10) return { status: 'Low Stock', color: '#D97706', bgColor: '#FEF3C7' };
-    return { status: 'In Stock', color: '#059669', bgColor: '#D1FAE5' };
+    if (stock === 0) return { status: 'Out of Stock', color: '#DC2626', bgColor: '#FEE2E2', icon: 'close-circle' };
+    if (stock <= 10) return { status: 'Low Stock', color: '#D97706', bgColor: '#FEF3C7', icon: 'warning' };
+    return { status: 'In Stock', color: '#059669', bgColor: '#D1FAE5', icon: 'checkmark-circle' };
   };
 
   const formatCurrency = (amount: number) => {
@@ -97,25 +96,6 @@ export default function ProductsViewScreen() {
     if (!product?.sale_price || !product?.cost_price || product.cost_price === 0) return 0;
     return ((product.sale_price - product.cost_price) / product.cost_price) * 100;
   };
-
-  if (error || !product) {
-    return (
-      <View style={styles.safeArea}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="close-circle-outline" size={64} color="#DC2626" />
-          <Text style={styles.errorTitle}>Product Not Found</Text>
-          <Text style={styles.errorText}>{error || 'The product you are looking for does not exist.'}</Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => router.push('/(drawer)/products/lists')}
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Back to Products</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   const stockStatus = getStockStatus(product.stock);
   const profit = calculateProfit();
@@ -136,7 +116,10 @@ export default function ProductsViewScreen() {
           
           <Text style={styles.title}>Product Details</Text>
           
-          <TouchableOpacity onPress={() => router.push(`/(drawer)/products/setup?id=${id}`)} style={styles.editButton}>
+          <TouchableOpacity 
+            onPress={() => router.push(`/(drawer)/products/setup?id=${id}`)} 
+            style={styles.editButton}
+          >
             <Ionicons name="create-outline" size={20} color="#6366F1" />
             <Text style={styles.editText}>Edit</Text>
           </TouchableOpacity>
@@ -144,77 +127,50 @@ export default function ProductsViewScreen() {
 
         {/* Product Hero Section */}
         <View style={styles.heroCard}>
-          <View style={styles.imageContainer}>
-            {product.images && product.images.image_name ? (
-              <TouchableOpacity
-                onPress={() => {
-                  if (product.images.image_name) {
-                    setSelectedImage(`${IMAGE_URL}/products/${product.images.image_name}`);
-                  } else {
-                    setSelectedImage(null);
-                  }
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              onPress={() => {
+                if (product.images?.image_name) {
+                  setSelectedImage(`${IMAGE_URL}/products/${product.images.image_name}`);
                   setModalVisible(true);
-                }}
-              >
-                <Image
-                  source={{ uri: `${IMAGE_URL}/products/${product.images.image_name}` }}
-                  style={styles.productImage}
-                />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Ionicons name="cube-outline" size={50} color="#9CA3AF" />
-                <Text style={styles.placeholderText}>No Image</Text>
-              </View>
-            )}
-
-            {/* Full Image Modal */}
-            <Modal
-              visible={modalVisible}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setModalVisible(false)}
+                }
+              }}
+              style={styles.imageTouchable}
             >
-              <View style={styles.modalBackground}>
-                {/* ✅ Close Icon */}
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Ionicons name="close" size={28} color="#fff" />
-                </TouchableOpacity>
-
-                {/* ✅ Full Image */}
-                {selectedImage ? (
+              {product.images?.image_name ? (
+                <View style={styles.imageContainer}>
+                  {imageLoading && (
+                    <ActivityIndicator size="small" color="#6366F1" style={styles.imageLoader} />
+                  )}
                   <Image
-                    source={{ uri: selectedImage }}
-                    style={styles.fullImage}
-                    resizeMode="contain"
+                    source={{ uri: `${IMAGE_URL}/products/${product.images.image_name}` }}
+                    style={styles.productImage}
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoadEnd={() => setImageLoading(false)}
                   />
-                ) : (
-                  <Image
-                    source={require('../../../assets/images/placeholder.jpg')}
-                    style={styles.fullImage}
-                    resizeMode="contain"
-                  />
-                )}
-              </View>
-            </Modal>
+                </View>
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="cube-outline" size={40} color="#9CA3AF" />
+                  <Text style={styles.placeholderText}>No Image</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
           
           <View style={styles.heroInfo}>
             <Text style={styles.productName}>{product.name}</Text>
-            <Text style={styles.productSKU}>SKU: {product.sku || 'N/A'}</Text>
+            <Text style={styles.productSKU}>SKU: {product.sku}</Text>
+            <Text style={styles.productStock}>Stocks: {product.stock} units available</Text>
             
-            <View style={styles.statusRow}>
-              <View style={[styles.statusBadge, 
-                product.status === 'Active' ? styles.activeBadge : styles.inactiveBadge
-              ]}>
+            <View style={styles.statusContainer}>
+              <View style={[styles.statusBadge, product.status === 'Active' ? styles.activeBadge : styles.inactiveBadge]}>
                 <Text style={styles.statusText}>{product.status}</Text>
               </View>
               
-              <View style={[styles.stockBadge, { backgroundColor: stockStatus.bgColor }]}>
-                <Text style={[styles.stockText, { color: stockStatus.color }]}>
+              <View style={[styles.statusBadge, { backgroundColor: stockStatus.bgColor }]}>
+                <Ionicons name={stockStatus.icon as any} size={14} color={stockStatus.color} />
+                <Text style={[styles.stockStatusText, { color: stockStatus.color }]}>
                   {stockStatus.status}
                 </Text>
               </View>
@@ -222,57 +178,111 @@ export default function ProductsViewScreen() {
           </View>
         </View>
 
-        {/* Quick Stats */}
+        {/* Price */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <MaterialCommunityIcons name="package-variant" size={24} color="#6366F1" />
-            <Text style={styles.statValue}>{product.stock}</Text>
-            <Text style={styles.statLabel}>Current Stock</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <MaterialCommunityIcons name="currency-usd" size={24} color="#10B981" />
-            <Text style={styles.statValue}>{settings.currency}{formatCurrency(product.sale_price || '0.00')}</Text>
-            <Text style={styles.statLabel}>Sale Price {settings.currency}</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <FontAwesome5 name="chart-line" size={20} color={profit >= 0 ? '#059669' : '#DC2626'} />
-            <Text style={[styles.statValue, { color: profit >= 0 ? '#059669' : '#DC2626' }]}>
-              {settings.currency}{formatCurrency(profit)}
+            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="card-outline" size={20} color="#D97706" />
+            </View>
+            <Text style={styles.statValue}>
+              {settings.currencyView}{formatCurrency(product.cost_price)}
             </Text>
-            <Text style={styles.statLabel}>Profit</Text>
+            <Text style={styles.statLabel}>Cost Price</Text>
+          </View>
+          
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
+              <Ionicons name="pricetag-outline" size={20} color="#059669" />
+            </View>
+            <Text style={styles.statValue}>{settings.currencyView}{formatCurrency(product.sale_price)}</Text>
+            <Text style={styles.statLabel}>Sale Price</Text>
           </View>
         </View>
 
-        {/* Pricing Information */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="wallet-outline" size={20} color="#374151" />
-            <Text style={styles.sectionTitle}>Pricing & Profit</Text>
+        {/* Quick Stats */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
+              <Ionicons 
+                name={profit >= 0 ? "trending-up-outline" : "trending-down-outline"} 
+                size={20} 
+                color={profit >= 0 ? '#2563EB' : '#DC2626'} 
+              />
+            </View>
+            <Text style={[styles.statValue, { color: profit >= 0 ? '#059669' : '#DC2626' }]}>
+              {settings.currencyView}{formatCurrency(profit)}
+            </Text>
+            <Text style={styles.statLabel}>Profit</Text>
           </View>
           
-          <View style={styles.pricingGrid}>
-            <View style={styles.priceItem}>
-              <Text style={styles.priceLabel}>Cost Price</Text>
-              <Text style={styles.costPrice}>{settings.currency}{formatCurrency(product.cost_price)}</Text>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="analytics-outline" size={20} color="#7C3AED" />
+            </View>
+            <Text style={[styles.statValue, { color: profitMargin >= 0 ? '#7C3AED' : '#DC2626' }]}>
+              {profitMargin.toFixed(1)}%
+            </Text>
+            <Text style={styles.statLabel}>Margin</Text>
+          </View>
+        </View>
+
+        {/* Product Information */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="information-circle-outline" size={20} color="#374151" />
+            <Text style={styles.sectionTitle}>Product Information</Text>
+          </View>
+          
+          <View style={styles.infoGrid}>
+            <InfoItem 
+              icon="pricetags-outline"
+              label="Category"
+              value={product.category_name || product.category?.name || 'Not set'}
+            />
+            <InfoItem 
+              icon="business-outline"
+              label="Brand"
+              value={product.brand_name || product.brand?.name || 'Not set'}
+            />
+            <InfoItem 
+              icon="scale-outline"
+              label="Unit"
+              value={product.unit_name || product.unit?.name || 'Not set'}
+            />
+          </View>
+        </View>
+
+        {/* Pricing Details */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="cash-outline" size={20} color="#374151" />
+            <Text style={styles.sectionTitle}>Pricing Details</Text>
+          </View>
+          
+          <View style={styles.pricingCard}>
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Cost Price</Text>
+              <Text style={styles.costPriceText}>
+                {settings.currencyView}{formatCurrency(product.cost_price)}
+              </Text>
             </View>
             
-            <View style={styles.priceItem}>
-              <Text style={styles.priceLabel}>Sale Price</Text>
-              <Text style={styles.salePrice}>{settings.currency}{formatCurrency(product.sale_price)}</Text>
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Sale Price</Text>
+              <Text style={styles.salePriceText}>
+                {settings.currencyView}{formatCurrency(product.sale_price)}
+              </Text>
             </View>
             
-            <View style={styles.profitItem}>
-              <Text style={styles.priceLabel}>Profit Margin</Text>
-              <View style={styles.marginRow}>
-                <Text style={[
-                  styles.profitMargin,
-                  { color: profitMargin >= 0 ? '#059669' : '#DC2626' }
-                ]}>
-                  {profitMargin.toFixed(1)}%
+            <View style={styles.divider} />
+            
+            <View style={styles.pricingRow}>
+              <Text style={styles.profitLabel}>Profit Margin</Text>
+              <View style={styles.profitSection}>
+                <Text style={[styles.profitValue, { color: profitMargin >= 0 ? '#059669' : '#DC2626' }]}>
+                  {profitMargin >= 0 ? '+' : ''}{profitMargin.toFixed(1)}%
                 </Text>
-                <MaterialCommunityIcons 
+                <Ionicons 
                   name={profitMargin >= 0 ? "trending-up" : "trending-down"} 
                   size={16} 
                   color={profitMargin >= 0 ? '#059669' : '#DC2626'} 
@@ -282,37 +292,11 @@ export default function ProductsViewScreen() {
           </View>
         </View>
 
-        {/* Product Information */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="help-circle-outline" size={20} color="#374151" />
-            <Text style={styles.sectionTitle}>Product Information</Text>
-          </View>
-          
-          <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="category" 
-              label="Category" 
-              value={product.category_name || product.category?.name} 
-            />
-            <DetailItem 
-              icon="branding-watermark" 
-              label="Brand" 
-              value={product.brand_name || product.brand?.name} 
-            />
-            <DetailItem 
-              icon="straighten" 
-              label="Unit" 
-              value={product.unit_name || product.unit?.name} 
-            />
-          </View>
-        </View>
-
         {/* Stock Alert */}
         {product.stock <= 10 && (
           <View style={[styles.alertCard, product.stock === 0 ? styles.dangerAlert : styles.warningAlert]}>
             <Ionicons 
-              name={product.stock === 0 ? "close-circle-outline" : "warning-outline"} 
+              name={product.stock === 0 ? "close-circle" : "warning"} 
               size={24} 
               color={product.stock === 0 ? "#DC2626" : "#D97706"} 
             />
@@ -322,8 +306,8 @@ export default function ProductsViewScreen() {
               </Text>
               <Text style={styles.alertText}>
                 {product.stock === 0 
-                  ? 'This product is currently out of stock. Consider restocking.'
-                  : `Only ${product.stock} units left. Consider restocking soon.`
+                  ? 'This product is currently out of stock. Consider restocking to meet customer demand.'
+                  : `Only ${product.stock} units remaining. Consider restocking soon to avoid stockouts.`
                 }
               </Text>
             </View>
@@ -334,7 +318,7 @@ export default function ProductsViewScreen() {
         {product.description && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="list-outline" size={20} color="#374151" />
+              <Ionicons name="document-text-outline" size={20} color="#374151" />
               <Text style={styles.sectionTitle}>Description</Text>
             </View>
             
@@ -344,21 +328,44 @@ export default function ProductsViewScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Full Image Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setModalVisible(false)}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+
+          {selectedImage ? (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
 
-// Detail Item Component
-const DetailItem = ({ icon, label, value }: any) => (
-  <View style={styles.detailItem}>
-    <View style={styles.detailIcon}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
+// Info Item Component
+const InfoItem = ({ icon, label, value }: any) => (
+  <View style={styles.infoItem}>
+    <View style={styles.infoIcon}>
+      <Ionicons name={icon} size={18} color="#6366F1" />
     </View>
-    <View style={styles.detailContent}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={1}>
-        {value || '-'}
-      </Text>
+    <View style={styles.infoContent}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   </View>
 );
@@ -371,42 +378,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#F9FAFB',
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
@@ -415,12 +391,13 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 4,
+    padding: 8,
   },
   backText: {
     color: '#374151',
     marginLeft: 4,
     fontSize: 16,
+    fontWeight: '500',
   },
   title: {
     fontSize: 18,
@@ -431,221 +408,270 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
   },
   editText: {
     color: '#6366F1',
     marginLeft: 4,
     fontWeight: '600',
+    fontSize: 14,
   },
   heroCard: {
     backgroundColor: '#fff',
     margin: 20,
-    padding: 20,
-    borderRadius: 16,
+    padding: 24,
+    borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 12,
+    elevation: 5,
     flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  avatarSection: {
     alignItems: 'center',
+    marginRight: 20,
+  },
+  imageTouchable: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   imageContainer: {
-    marginRight: 16,
+    position: 'relative',
+  },
+  imageLoader: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -10,
+    marginTop: -10,
+    zIndex: 1,
   },
   productImage: {
     width: 100,
     height: 100,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
   },
   imagePlaceholder: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
   },
   placeholderText: {
     marginTop: 8,
     fontSize: 12,
     color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    marginTop: 15,
+    gap: 6,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  activeBadge: {
+    backgroundColor: '#D1FAE5',
+  },
+  inactiveBadge: {
+    backgroundColor: '#F3F4F6',
+  },
+  stockStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
   },
   heroInfo: {
     flex: 1,
   },
   productName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
   productSKU: {
     fontSize: 14,
+    color: '#6366F1',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  productStock: {
+    fontSize: 14,
     color: '#6B7280',
-    marginBottom: 12,
   },
-  statusRow: {
-    flexDirection: 'row',
-    gap: 8,
+  salePrice: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#059669',
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  activeBadge: {
-    backgroundColor: '#6B7280',
-  },
-  inactiveBadge: {
-    backgroundColor: '#FF3B30',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  stockBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  stockText: {
-    fontSize: 12,
-    fontWeight: '600',
+  costPrice: {
+    fontSize: 14,
+    color: '#6B7280',
+    textDecorationLine: 'line-through',
   },
   statsGrid: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     gap: 12,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
-    marginVertical: 4,
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: '#6B7280',
-    textAlign: 'center',
+    fontWeight: '500',
   },
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
     marginBottom: 16,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginLeft: 8,
-  },
-  sectionContent: {
-    gap: 12,
-  },
-  pricingGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  priceItem: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366F1',
-  },
-  profitItem: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10B981',
-  },
-  priceLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  costPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  salePrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#059669',
-  },
-  marginRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  profitMargin: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
+    color: '#111827',
+    marginLeft: 8,
   },
-  detailItem: {
+  infoGrid: {
+    gap: 16,
+  },
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  detailIcon: {
-    width: 32,
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  detailContent: {
+  infoContent: {
     flex: 1,
-    marginLeft: 8,
   },
-  detailLabel: {
+  infoLabel: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 2,
   },
-  detailValue: {
+  infoValue: {
     fontSize: 16,
     color: '#111827',
+    fontWeight: '600',
+  },
+  pricingCard: {
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366F1',
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pricingLabel: {
+    fontSize: 14,
+    color: '#6B7280',
     fontWeight: '500',
+  },
+  costPriceText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  salePriceText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 8,
+  },
+  profitLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  profitSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  profitValue: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   alertCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginHorizontal: 20,
     marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     gap: 12,
   },
   dangerAlert: {
@@ -663,64 +689,43 @@ const styles = StyleSheet.create({
   },
   alertTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 4,
   },
   alertText: {
     fontSize: 14,
     color: '#6B7280',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   descriptionCard: {
     backgroundColor: '#F8FAFC',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   descriptionText: {
     fontSize: 14,
     color: '#374151',
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#6366F1',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: 'rgba(0,0,0,0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  closeButton: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    padding: 8,
   },
   fullImage: {
     width: '90%',
     height: '80%',
-    borderRadius: 10,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 6,
+    borderRadius: 12,
   },
 });

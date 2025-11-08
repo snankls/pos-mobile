@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
   Platform
 } from 'react-native';
 import axios from 'axios';
@@ -44,8 +45,6 @@ export default function InvoiceViewScreen() {
       setInvoiceItems(invoiceRes.data.details || []);
     } catch (err) {
       setError('Failed to load invoice data.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -73,14 +72,14 @@ export default function InvoiceViewScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return { color: '#FFF', bgColor: '#34C759' };
-      case 'inactive': return { color: '#FFF', bgColor: '#FEE2E2' };
-      default: return { color: '#FFF', bgColor: '#34C759' };
+    switch (status?.toLowerCase()) {
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      default: return '#34C759';
     }
   };
 
@@ -200,8 +199,6 @@ export default function InvoiceViewScreen() {
     );
   }
 
-  const statusInfo = getStatusColor(invoice.status);
-
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -230,8 +227,8 @@ export default function InvoiceViewScreen() {
               <Text style={styles.invoiceNumber}>{invoice.invoice_number}</Text>
               <Text style={styles.invoiceDate}>{formatDate(invoice.invoice_date)}</Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}>
-              <Text style={[styles.statusText, { color: statusInfo.color }]}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(invoice.status) }]}>
+              <Text style={styles.statusText}>
                 {invoice.status}
               </Text>
             </View>
@@ -250,26 +247,53 @@ export default function InvoiceViewScreen() {
           </View>
           
           <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="business-outline" 
-              label="Customer" 
-              value={invoice.customer_name || 'N/A'} 
-            />
-            <DetailItem 
-              icon="mail-outline" 
-              label="Email" 
-              value={invoice.customer_email || 'N/A'} 
-            />
-            <DetailItem 
-              icon="logo-whatsapp" 
-              label="WhatsApp" 
-              value={invoice.customer_whatsapp || 'N/A'} 
-            />
-            <DetailItem 
-              icon="location-outline" 
-              label="Address" 
-              value={invoice.customer_address || 'N/A'} 
-            />
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="business-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Customer</Text>
+                <Text style={styles.detailValue} numberOfLines={2}>{invoice.customer_name || 'N/A'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="mail-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={styles.detailValue} numberOfLines={2}>{invoice.customer_email || 'N/A'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="logo-whatsapp" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>WhatsApp</Text>
+                <TouchableOpacity 
+                  onPress={() => Linking.openURL(`whatsapp://send?phone=${invoice.customer_whatsapp}`)}
+                  disabled={!invoice.customer_whatsapp}
+                >
+                  <Text style={[styles.detailValue, styles.whatsappLink]} numberOfLines={1}>
+                    {invoice.customer_whatsapp || 'N/A'}
+                    {invoice.customer_whatsapp && ' ↗'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="location-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Address</Text>
+                <Text style={styles.detailValue} numberOfLines={2}>{invoice.customer_address || 'N/A'}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -327,7 +351,7 @@ export default function InvoiceViewScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount</Text>
               <Text style={[styles.summaryValue, styles.discountValue]}>
-                {settings.currency}{formatCurrency(invoice.total_price)}
+                {settings.currency}{formatCurrency(invoice.total_discount)}
               </Text>
             </View>
           )}
@@ -363,22 +387,8 @@ export default function InvoiceViewScreen() {
   );
 }
 
-// Detail Item Component
-const DetailItem = ({ icon, label, value }: any) => (
-  <View style={styles.detailItem}>
-    <View style={styles.detailIcon}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
-    </View>
-    <View style={styles.detailContent}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={2}>
-        {value || '-'}
-      </Text>
-    </View>
-  </View>
-);
-
 const styles = StyleSheet.create({
+  // ===== MAIN CONTAINER & LAYOUT =====
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
@@ -386,18 +396,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
+
+  // ===== ERROR STATES =====
   errorContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -416,6 +418,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
+
+  // ===== HEADER SECTION =====
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,13 +455,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  iconButton: {
-    padding: 8,
-  },
+
+  // ===== INVOICE HEADER CARD =====
   invoiceHeaderCard: {
     backgroundColor: '#fff',
     margin: 20,
@@ -493,6 +492,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#fff',
   },
   description: {
     fontSize: 14,
@@ -500,6 +500,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontStyle: 'italic',
   },
+
+  // ===== CONTENT SECTIONS =====
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -526,6 +528,8 @@ const styles = StyleSheet.create({
   sectionContent: {
     gap: 12,
   },
+
+  // ===== DETAIL ITEM COMPONENT =====
   detailItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -549,6 +553,12 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+  whatsappLink: {
+    color: '#25D366',
+    textDecorationLine: 'underline',
+  },
+
+  // ===== ITEMS LIST STYLES =====
   itemsContainer: {
     gap: 12,
   },
@@ -588,6 +598,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+
+  // ===== SUMMARY SECTION =====
   summaryCard: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -636,6 +648,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6366F1',
   },
+
+  // ===== ACTION BUTTONS =====
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
@@ -643,7 +657,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   primaryButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

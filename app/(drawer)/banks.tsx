@@ -16,7 +16,7 @@ import {
   Platform
 } from 'react-native';
 import axios from 'axios';
-import { useNavigation } from 'expo-router';
+//import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../components/LoadingScreen';
 import Pagination from '../components/Pagination';
@@ -50,7 +50,7 @@ export default function BanksScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   const { token, logout } = useAuth();
-  const navigation = useNavigation();
+  //const navigation = useNavigation();
 
   const perPage = 20;
   const [allRecords, setAllRecords] = useState<Bank[]>([]);
@@ -147,7 +147,7 @@ export default function BanksScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const handleSearch = (text: string) => {
@@ -263,7 +263,7 @@ export default function BanksScreen() {
     } catch (err: any) {
       console.error('Save record error:', err.response?.data || err.message);
 
-      // ✅ Validation error handling
+      // Validation error handling
       if (err.response?.status === 422 && err.response?.data?.errors) {
         const apiErrors = err.response.data.errors;
         const formattedErrors: any = {};
@@ -604,9 +604,7 @@ export default function BanksScreen() {
                 {updating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>
-                    {isEditing ? 'Update Bank' : 'Add Bank'}
-                  </Text>
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -660,7 +658,14 @@ export default function BanksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
+  },
+  
   headerRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -670,15 +675,108 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA'
   },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#1C1C1E' },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  title: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#1C1C1E' 
+  },
+  
+  headerText: { 
+    fontWeight: '600', 
+    fontSize: 14, 
+    color: '#1C1C1E', 
+    paddingHorizontal: 10 
+  },
+  
+  cellText: { 
+    fontSize: 14, 
+    color: '#1C1C1E', 
+    paddingHorizontal: 10 
+  },
+  
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   addButton: { 
     backgroundColor: '#007AFF', 
     paddingHorizontal: 16,
     paddingVertical: 8, 
     borderRadius: 8 
   },
-  addButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  
+  addButtonText: { 
+    color: '#fff', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
+  
+  retryButton: { 
+    backgroundColor: '#007AFF', 
+    paddingHorizontal: 20, 
+    paddingVertical: 10, 
+    borderRadius: 8 
+  },
+  
+  retryButtonText: { 
+    color: '#fff', 
+    fontWeight: '600' 
+  },
+  
+  actionButtons: { 
+    flexDirection: 'row', 
+    gap: 8 
+  },
+  
+  actionButton: { 
+    padding: 6, 
+    borderRadius: 6 
+  },
+  
+  editButton: { 
+    backgroundColor: '#E8F2FF' 
+  },
+  
+  deleteButton: { 
+    backgroundColor: '#FFEAEA' 
+  },
+  
+  saveButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  
+  saveButtonDisabled: {
+    backgroundColor: '#C7C7CC',
+  },
+  
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 
+  closeButton: {
+    padding: 4,
+  },
+
+  // ==============================
+  // SEARCH & INPUT STYLES
+  // ==============================
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -688,6 +786,7 @@ const styles = StyleSheet.create({
     margin: 10,
     height: 40,
   },
+  
   searchInput: {
     flex: 1,
     fontSize: 14,
@@ -695,149 +794,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   
-  // Table Styles
-  tableHeader: { 
-    flexDirection: 'row', 
-    padding: 12, 
-    backgroundColor: '#F8F9FA', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E5E5EA',
-    minWidth: 900 
-  },
-  tableRow: { 
-    flexDirection: 'row', 
-    padding: 12, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#F2F2F7', 
-    alignItems: 'center', 
-    minWidth: 900 
-  },
-  headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
-  cellText: { fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
-  statusBadge: { 
-    marginHorizontal: 10,
-    paddingHorizontal: 8, 
-    paddingVertical: 4, 
-    borderRadius: 12, 
-    alignSelf: 'flex-start' 
-  },
-  statusText: { color: '#fff', fontWeight: '600', fontSize: 12 },
-  actionButtons: { flexDirection: 'row', gap: 8 },
-  actionButton: { padding: 6, borderRadius: 6 },
-  editButton: { backgroundColor: '#E8F2FF' },
-  deleteButton: { backgroundColor: '#FFEAEA' },
-
-  noDataContainer: {
-    padding: 22,
-  },
-  noDataText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'left',
-  },
-  
-  // Error Styles
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  retryButtonText: { color: '#fff', fontWeight: '600' },
-  
-  pagination: { 
-    marginTop: 15,
-    marginBottom: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paginationInfo: { 
-    marginBottom: 5 
-  },
-  paginationText: { 
-    fontSize: 12, 
-    color: '#555' 
-  },
-  paginationControls: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  pageIndicatorText: { 
-    fontSize: 14, 
-    color: '#333', 
-    marginHorizontal: 10 
-  },
-  pageButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
-  pageButtonDisabled: { 
-    opacity: 0.5 
-  },
-  pageButtonText: { 
-    fontSize: 14, 
-    color: '#007AFF', 
-    marginHorizontal: 4 
-  },
-
-  // Modal Styles
-  modalBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBodyWithPadding: {
-    paddingBottom: 30,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalBody: {
-    padding: 16,
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 8,
-  },
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -847,13 +803,132 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#F8F9FA',
   },
+  
   textArea: {
     height: 80,
     textAlignVertical: 'top',
   },
+  
   inputError: {
     borderColor: '#FF3B30',
   },
+
+  // ==============================
+  // TABLE & DATA STYLES
+  // ==============================
+  tableHeader: { 
+    flexDirection: 'row', 
+    padding: 12, 
+    backgroundColor: '#F8F9FA', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E5E5EA',
+    minWidth: 900 
+  },
+  
+  tableRow: { 
+    flexDirection: 'row', 
+    padding: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F2F2F7', 
+    alignItems: 'center', 
+    minWidth: 900 
+  },
+  
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 12, 
+    alignSelf: 'flex-start' 
+  },
+  
+  statusText: { 
+    color: '#fff', 
+    fontWeight: '600', 
+    fontSize: 12 
+  },
+
+  // ==============================
+  // STATUS & INDICATOR STYLES
+  // ==============================
+  errorContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  
+  noDataContainer: {
+    padding: 22,
+  },
+
+  // ==============================
+  // MODAL & OVERLAY STYLES
+  // ==============================
+  keyboardAvoidingView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '90%',
+  },
+  
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+  },
+  
+  modalBody: {
+    padding: 16,
+  },
+  
+  modalBodyWithPadding: {
+    paddingBottom: 30,
+  },
+
+  // ==============================
+  // FORM & FIELD STYLES
+  // ==============================
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 8,
+  },
+  
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -865,33 +940,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
   },
+  
   modalTriggerText: {
     color: '#1C1C1E',
     fontSize: 16,
   },
+  
   modalTriggerPlaceholder: {
     fontSize: 16,
   },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
+  // ==============================
+  // LIST & SELECTION STYLES
+  // ==============================
   modalListContent: {
     paddingBottom: 16,
   },
+  
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -900,9 +965,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F2F2F7',
   },
+  
   selectedModalItem: {
     backgroundColor: '#F0F8FF',
   },
+  
   modalItemText: {
     fontSize: 16,
     color: '#1C1C1E',

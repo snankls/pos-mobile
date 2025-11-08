@@ -68,6 +68,15 @@ export default function ReturnsListsScreen() {
   const handleSearch = (text: string) => {
     setSearchQuery(text);
 
+    if (!text.trim()) {
+      // Reset to show all records when search is empty
+      setTotalItems(allRecords.length);
+      setTotalPages(Math.ceil(allRecords.length / perPage));
+      updatePageRecords(allRecords, 1, perPage);
+      setPage(1);
+      return;
+    }
+
     const filtered = allRecords.filter((ireturn) =>
       ireturn.invoice_number?.toLowerCase().includes(text.toLowerCase())
     );
@@ -97,8 +106,6 @@ export default function ReturnsListsScreen() {
       setSettings(settingsObj);
     } catch (error) {
       console.error('Error fetching settings:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -132,7 +139,7 @@ export default function ReturnsListsScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const updatePageRecords = (all: IReturn[], currentPage: number, perPageCount: number) => {
@@ -157,7 +164,7 @@ export default function ReturnsListsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${API_URL}/invoices/${iReturn.id}`, {
+              await axios.delete(`${API_URL}/invoice/returns/${iReturn.id}`, {
                 headers: { Authorization: `Bearer ${token}` },
               });
               fetchRecords();
@@ -172,13 +179,11 @@ export default function ReturnsListsScreen() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return '#34C759';
-      case 'inactive':
-        return '#FF3B30';
-      default:
-        return '#34C759';
+    switch (status?.toLowerCase()) {
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      case 'posted': return '#007AFF';
+      default: return '#34C759';
     }
   };
 
@@ -246,14 +251,13 @@ export default function ReturnsListsScreen() {
       {Object.keys(COLUMN_WIDTHS).map((key) => {
         const typedKey = key as keyof typeof COLUMN_WIDTHS;
 
-        // ✅ valid sortable fields from Customer interface
+        // valid sortable fields from Customer interface
         const sortableKeys: (keyof IReturn)[] = [
           'invoice_number',
           'customer_name',
           'return_date',
           'total_quantity',
           'total_price',
-          'discount_value',
           'total_discount',
           'grand_total',
           'status',
@@ -456,7 +460,13 @@ export default function ReturnsListsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // ===== MAIN CONTAINER =====
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
+  },
+
+  // ===== HEADER SECTION =====
   headerRow: {
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -484,6 +494,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
+
+  // ===== SEARCH SECTION =====
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,13 +511,15 @@ const styles = StyleSheet.create({
     color: '#111827',
     paddingVertical: 5,
   },
+
+  // ===== TABLE STYLES =====
   tableHeader: {
     flexDirection: 'row',
     padding: 10,
     backgroundColor: '#f0f0f0',
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    minWidth: 900,
+    minWidth: 900, // Fixed width for horizontal scrolling
   },
   tableRow: {
     flexDirection: 'row',
@@ -513,10 +527,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     alignItems: 'center',
-    minWidth: 900,
+    minWidth: 900, // Matches header width
   },
-  headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
+  headerText: { 
+    fontWeight: 'bold', 
+    fontSize: 14, 
+    color: '#333', 
+    paddingHorizontal: 10 
+  },
+  cellText: { 
+    fontSize: 14, 
+    color: '#333', 
+    paddingHorizontal: 10 
+  },
+
+  // ===== STATUS BADGE =====
   statusBadge: { 
     marginHorizontal: 10,
     paddingVertical: 4,
@@ -529,7 +554,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 12,
   },
-  actionButtons: { flexDirection: 'row', gap: 10 },
+
+  // ===== ACTION BUTTONS =====
+  actionButtons: { 
+    flexDirection: 'row', 
+    gap: 10 
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,18 +568,17 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 5,
   },
-  actionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
   viewButton: {
-    backgroundColor: '#E9F9EE',
+    backgroundColor: '#E9F9EE', // Light green background
   },
-  editButton: { backgroundColor: '#E8F2FF' },
-  deleteButton: { backgroundColor: '#FFEAEA' },
-  
+  editButton: { 
+    backgroundColor: '#E8F2FF' // Light blue background
+  },
+  deleteButton: { 
+    backgroundColor: '#FFEAEA' // Light red background
+  },
+
+  // ===== EMPTY STATE =====
   noDataContainer: {
     padding: 22,
   },
@@ -558,15 +587,26 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'left',
   },
-  
-  pagination: { marginTop: 15, marginBottom: 30, alignItems: 'center', justifyContent: 'center' },
-  paginationText: { fontSize: 12, color: '#555', marginBottom: 5 },
-  paginationControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  pageButton: { flexDirection: 'row', alignItems: 'center' },
-  pageButtonDisabled: { opacity: 0.5 },
-  pageIndicatorText: { fontSize: 14, color: '#333', marginHorizontal: 10 },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 16, color: '#FF3B30', textAlign: 'center', marginVertical: 10 },
-  retryButton: { padding: 10, backgroundColor: '#007AFF', borderRadius: 6 },
-  retryButtonText: { color: '#fff', fontWeight: 'bold' },
+
+  // ===== ERROR STATES =====
+  errorContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  errorText: { 
+    fontSize: 16, 
+    color: '#FF3B30', 
+    textAlign: 'center', 
+    marginVertical: 10 
+  },
+  retryButton: { 
+    padding: 10, 
+    backgroundColor: '#007AFF', 
+    borderRadius: 6 
+  },
+  retryButtonText: { 
+    color: '#fff', 
+    fontWeight: 'bold' 
+  },
 });

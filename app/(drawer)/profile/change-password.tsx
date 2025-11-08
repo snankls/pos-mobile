@@ -28,7 +28,7 @@ export default function ChangePasswordScreen() {
     new_password_confirmation: '',
   });
 
-  // ✅ Separate loading states
+  // Separate loading states
   const [screenLoading, setScreenLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [showOldPassword, setShowOldPassword] = useState(false);
@@ -44,15 +44,15 @@ export default function ChangePasswordScreen() {
     const initialize = async () => {
       try {
         // For example, you might validate token or prefetch something
-        await new Promise(resolve => setTimeout(resolve, 1000)); // simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } finally {
-        setScreenLoading(false); // ✅ hide global loader after setup
+        setScreenLoading(false);
       }
     };
     initialize();
   }, []);
 
-  // ✅ Show global loader only when screen initially loads
+  // Show global loader only when screen initially loads
   if (screenLoading) return <LoadingScreen />;
 
   const handleChange = (field: string, value: string) => {
@@ -250,10 +250,56 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, flexGrow: 1, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 20 },
-  fieldGroup: { marginBottom: 10 },
-  label: { fontSize: 15, fontWeight: '500', marginTop: 10 },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
+  container: { 
+    padding: 16, 
+    flexGrow: 1, 
+    backgroundColor: '#fff' 
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  title: { 
+    fontSize: 22, 
+    fontWeight: '700', 
+    textAlign: 'center', 
+    marginBottom: 20 
+  },
+  
+  label: { 
+    fontSize: 15, 
+    fontWeight: '500', 
+    marginTop: 10 
+  },
+  
+  errorText: { 
+    color: '#FF3B30', 
+    fontSize: 13, 
+    marginTop: 4 
+  },
+  
+  saveButtonText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  
+  globalMessageText: { 
+    fontSize: 14, 
+    textAlign: 'center', 
+    color: '#000' 
+  },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
+  fieldGroup: { 
+    marginBottom: 10 
+  },
+  
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -264,14 +310,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     marginTop: 6,
   },
-  inputError: { borderColor: '#FF3B30' },
+  
+  inputError: { 
+    borderColor: '#FF3B30' 
+  },
+  
   eyeIcon: {
     position: 'absolute',
     right: 10,
     top: '50%',
     transform: [{ translateY: -11 }],
   },
-  errorText: { color: '#FF3B30', fontSize: 13, marginTop: 4 },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   saveButton: {
     backgroundColor: '#007AFF',
     padding: 16,
@@ -279,17 +332,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  globalMessage: { padding: 12, borderRadius: 6, marginTop: 10, alignItems: 'center' },
+
+  // ==============================
+  // STATUS & MESSAGE STYLES
+  // ==============================
+  globalMessage: { 
+    padding: 12, 
+    borderRadius: 6, 
+    marginTop: 10, 
+    alignItems: 'center' 
+  },
+  
   successMessage: {
     backgroundColor: '#D1FAE5',
     borderColor: '#10B981',
     borderWidth: 1,
   },
+  
   errorMessage: {
     backgroundColor: '#FEE2E2',
     borderColor: '#DC2626',
     borderWidth: 1,
   },
-  globalMessageText: { fontSize: 14, textAlign: 'center', color: '#000' },
 });

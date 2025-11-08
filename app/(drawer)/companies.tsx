@@ -37,7 +37,7 @@ export default function CompaniesScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const [globalErrorMessage, setGlobalErrorMessage] = useState('');
 
-  // ✅ Fetch company record
+  // Fetch company record
   useEffect(() => {
     fetchCompany();
   }, []);
@@ -50,7 +50,7 @@ export default function CompaniesScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // ✅ Handle both array and object API responses
+      // Handle both array and object API responses
       let data = Array.isArray(res.data) ? res.data[0] : res.data?.data || res.data;
 
       if (!data) {
@@ -59,7 +59,7 @@ export default function CompaniesScreen() {
         return;
       }
 
-      // ✅ Safely extract image filename
+      // Safely extract image filename
       const imageFileName = data.image_name || data.images?.image_name || null;
 
       setCompany({
@@ -84,7 +84,7 @@ export default function CompaniesScreen() {
     }
   };
     
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const handleFileSelected = async () => {
@@ -142,7 +142,8 @@ export default function CompaniesScreen() {
       formData.append('description', company.description?.trim() || '');
       formData.append('_method', 'PUT');
 
-      if (imagePreview && imagePreview.startsWith('file')) {
+      const isLocalImage = imagePreview?.startsWith('file:') || imagePreview?.startsWith('data:');
+      if (isLocalImage) {
         const filename = (company.name || 'company').replace(/\s+/g, '_') + '.jpg';
         formData.append('company_image', {
           uri: imagePreview,
@@ -159,13 +160,13 @@ export default function CompaniesScreen() {
         },
       });
 
-      setSuccessMessage(response.data?.message || 'Company updated successfully!');
+      setSuccessMessage(response.data?.message || 'Record updated successfully!');
       fetchCompany();
       
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage('');
-      }, 3000);
+      }, 5000);
 
     } catch (error: any) {
       if (error.response?.status === 422) {
@@ -267,27 +268,28 @@ export default function CompaniesScreen() {
 }
 
 const styles = StyleSheet.create({
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  loaderText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
-  },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
   container: {
     flexGrow: 1,
     padding: 16,
     backgroundColor: '#fff',
   },
+  
   header: {
     alignItems: 'center',
     marginBottom: 20,
   },
+  
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
   title: {
     flex: 1,
     textAlign: 'center',
@@ -295,19 +297,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  fieldGroup: {
-    marginBottom: 20,
-  },
+  
   label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
   },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
+  fieldGroup: {
+    marginBottom: 20,
+  },
+  
   input: {
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -318,20 +322,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     color: '#333',
   },
+  
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
+  
   inputError: {
     borderColor: '#FF3B30',
     backgroundColor: '#FEF2F2',
   },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    marginTop: 6,
-    marginLeft: 4,
-  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -342,26 +346,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: '#F0F7FF',
   },
+  
   uploadButtonText: {
     color: '#007AFF',
     fontSize: 16,
     marginLeft: 8,
     fontWeight: '600',
   },
-  imageContainer: {
-    position: 'relative',
-    width: 120,
-    height: 120,
-    marginTop: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
-    alignSelf: 'flex-start',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
+  
   saveButton: {
     backgroundColor: '#007AFF',
     padding: 16,
@@ -374,14 +366,46 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  
   saveButtonDisabled: {
     opacity: 0.6,
   },
+  
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
   },
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  imageContainer: {
+    position: 'relative',
+    width: 120,
+    height: 120,
+    marginTop: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+  },
+  
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+
+  // ==============================
+  // STATUS & MESSAGE STYLES
+  // ==============================
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  
   globalErrorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,12 +415,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 8,
   },
+  
   globalError: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
     flex: 1,
   },
+  
   successContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -406,6 +432,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 8,
   },
+  
   success: {
     color: '#fff',
     fontSize: 14,

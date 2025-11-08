@@ -17,7 +17,6 @@ import {
   Platform
 } from 'react-native';
 import axios from 'axios';
-import { useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../components/LoadingScreen';
@@ -39,7 +38,6 @@ export default function BrandsScreen() {
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
   const { token, logout } = useAuth();
-  const navigation = useNavigation();
 
   const perPage = 20;
   const [allRecords, setAllRecords] = useState<Brand[]>([]);
@@ -143,7 +141,7 @@ export default function BrandsScreen() {
     }
   };
       
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const updatePageRecords = (all: Brand[], currentPage: number, perPageCount: number) => {
@@ -158,7 +156,7 @@ export default function BrandsScreen() {
   };
 
   // Unified Add + Edit handler
-  const saveRecord = async () => {
+  const handleSubmit = async () => {
     try {
       setUpdating(true);
       setValidationError('');
@@ -413,7 +411,7 @@ export default function BrandsScreen() {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalBackground}>
-            {/* ✅ Close Icon */}
+            {/* Close Icon */}
             <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setModalVisible(false)}
@@ -421,7 +419,7 @@ export default function BrandsScreen() {
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            {/* ✅ Full Image */}
+            {/* Full Image */}
             {selectedImage ? (
               <Image
                 source={{ uri: selectedImage }}
@@ -597,7 +595,7 @@ export default function BrandsScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Image</Text>
+                <Text style={styles.fieldLabel}>Image <Text style={styles.imageNote}>(Max size 5MB)</Text></Text>
                 <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
                   <Ionicons name="image-outline" size={20} color="#007AFF" />
                   <Text style={styles.uploadButtonText}>Select Image</Text>
@@ -614,13 +612,13 @@ export default function BrandsScreen() {
 
               <TouchableOpacity
                 style={[styles.saveButton, updating && styles.saveButtonDisabled]}
-                onPress={saveRecord}
+                onPress={handleSubmit}
                 disabled={updating}
               >
                 {updating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save Changing</Text>
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -679,7 +677,14 @@ export default function BrandsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
+  },
+  
   headerRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -689,32 +694,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA'
   },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#1C1C1E' },
-  addButton: { 
-    backgroundColor: '#007AFF', 
-    paddingHorizontal: 16,
-    paddingVertical: 8, 
-    borderRadius: 8 
-  },
-  addButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    margin: 10,
-    height: 40,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#111827',
-    paddingVertical: 5,
-  },
   
-  // Table Styles
   tableHeader: { 
     flexDirection: 'row', 
     padding: 12, 
@@ -723,6 +703,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5EA',
     minWidth: 600 
   },
+  
   tableRow: { 
     flexDirection: 'row', 
     padding: 12, 
@@ -731,89 +712,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     minWidth: 600 
   },
-  headerText: { fontWeight: '600', fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
-  cellText: { fontSize: 14, color: '#1C1C1E', paddingHorizontal: 10 },
-  imageContainer: { width: 40, height: 40, borderRadius: 6, marginHorizontal: 10 },
-  statusBadge: { 
-    marginHorizontal: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12, 
-    alignSelf: 'flex-start',
-  },
-  statusText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  actionButtons: { flexDirection: 'row', gap: 8 },
-  actionButton: { 
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 6,
-  },
-  editButton: { backgroundColor: '#E8F2FF' },
-  deleteButton: { backgroundColor: '#FFEAEA' },
-
+  
   noDataContainer: {
     padding: 22,
   },
-  noDataText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'left',
+  
+  errorContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
   },
   
-  // Error Styles
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  retryButtonText: { color: '#fff', fontWeight: '600' },
-  
-  pagination: { 
-    marginTop: 15,
-    marginBottom: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paginationInfo: { 
-    marginBottom: 5 
-  },
-  paginationText: { 
-    fontSize: 12, 
-    color: '#555' 
-  },
-  paginationControls: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  pageIndicatorText: { 
-    fontSize: 14, 
-    color: '#333', 
-    marginHorizontal: 10 
-  },
-  pageButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
-  pageButtonDisabled: { 
-    opacity: 0.5 
-  },
-  pageButtonText: { 
-    fontSize: 14, 
-    color: '#007AFF', 
-    marginHorizontal: 4 
-  },
-
-  // Modal Styles
   modalBackdrop: {
     position: 'absolute',
     top: 0,
@@ -822,24 +732,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  
   keyboardAvoidingView: {
     flex: 1,
     justifyContent: 'flex-end',
   },
-  modalBodyWithPadding: {
-    paddingBottom: 30,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
+  
   modalContent: {
     backgroundColor: 'white',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: '90%',
   },
+  
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -848,38 +753,165 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
+  
+  modalBody: {
+    padding: 16,
+  },
+  
+  modalBodyWithPadding: {
+    paddingBottom: 30,
+  },
+  
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  title: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#1C1C1E' 
+  },
+  
+  addButtonText: { 
+    color: '#fff', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
+  
+  headerText: { 
+    fontWeight: '600', 
+    fontSize: 14, 
+    color: '#1C1C1E', 
+    paddingHorizontal: 10 
+  },
+  
+  cellText: { 
+    fontSize: 14, 
+    color: '#1C1C1E', 
+    paddingHorizontal: 10 
+  },
+  
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  
+  retryButtonText: { 
+    color: '#fff', 
+    fontWeight: '600' 
+  },
+  
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1C1C1E',
   },
-  closeButton: {
-    padding: 4,
-  },
-  modalBody: {
-    padding: 16,
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
+  
   fieldLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
     marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+
+  imageNote: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '400',
+  },
+  
+  modalTriggerText: {
+    color: '#1C1C1E',
     fontSize: 16,
-    backgroundColor: '#F8F9FA',
   },
-  inputError: {
-    borderColor: '#FF3B30',
+  
+  modalTriggerPlaceholder: {
+    fontSize: 16,
   },
+  
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 15,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  modalItemText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
+  addButton: { 
+    backgroundColor: '#007AFF', 
+    paddingHorizontal: 16,
+    paddingVertical: 8, 
+    borderRadius: 8 
+  },
+  
+  retryButton: { 
+    backgroundColor: '#007AFF', 
+    paddingHorizontal: 20, 
+    paddingVertical: 10, 
+    borderRadius: 8 
+  },
+  
+  actionButtons: { 
+    flexDirection: 'row', 
+    gap: 8 
+  },
+  
+  actionButton: { 
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  
+  editButton: { 
+    backgroundColor: '#E8F2FF' 
+  },
+  
+  deleteButton: { 
+    backgroundColor: '#FFEAEA' 
+  },
+  
+  closeButton: {
+    padding: 4,
+  },
+  
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -891,13 +923,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#F8F9FA',
   },
-  modalTriggerText: {
-    color: '#1C1C1E',
-    fontSize: 16,
-  },
-  modalTriggerPlaceholder: {
-    fontSize: 16,
-  },
+  
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -908,20 +934,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#F0F7FF',
   },
-  uploadButtonText: {
-    color: '#007AFF',
-    fontSize: 15,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  previewImage: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
+  
   saveButton: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
@@ -931,49 +944,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
+  
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalListContent: {
-    paddingBottom: 16,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  selectedModalItem: {
-    backgroundColor: '#F0F8FF',
-  },
-  modalItemText: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
-
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '90%',
-    height: '80%',
-    borderRadius: 10,
-  },
+  
   modalCloseButton: {
     position: 'absolute',
     top: 40,
@@ -982,5 +957,95 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 6,
+  },
+
+  // ==============================
+  // FORM & INPUT STYLES
+  // ==============================
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 10,
+    height: 40,
+  },
+  
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 5,
+  },
+  
+  input: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  imageContainer: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 6, 
+    marginHorizontal: 10 
+  },
+  
+  previewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+
+  // ==============================
+  // STATUS & BADGE STYLES
+  // ==============================
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
+  },
+
+  // ==============================
+  // MODAL & LIST STYLES
+  // ==============================
+  modalListContent: {
+    paddingBottom: 16,
+  },
+  
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  
+  selectedModalItem: {
+    backgroundColor: '#F0F8FF',
   },
 });

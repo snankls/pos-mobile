@@ -1,6 +1,6 @@
 import { View, Text } from 'react-native';
 
-export default function ForgotPassword() {
+export default function ResetPasswordScreen() {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>reset Password Page</Text>

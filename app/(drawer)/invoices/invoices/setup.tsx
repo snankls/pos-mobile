@@ -317,7 +317,7 @@ export default function InvoicesSetupScreen() {
         return;
       }
 
-      const res = await axios.get(`${API_URL}/customers`, {
+      const res = await axios.get(`${API_URL}/active/customers`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -407,7 +407,7 @@ export default function InvoicesSetupScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   // Date handling
@@ -1133,7 +1133,7 @@ export default function InvoicesSetupScreen() {
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Changing</Text>
+            <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
         </TouchableOpacity>
 
@@ -1287,32 +1287,25 @@ export default function InvoicesSetupScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ===== MAIN CONTAINER & LAYOUT =====
   container: {
     flex: 1,
     backgroundColor: '#fff',
-  },
-  backButton: {
-    padding: 4,
   },
   scrollContent: {
     flexGrow: 1,
     padding: 16,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
+
+  // ===== HEADER SECTION =====
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
     fontSize: 24,
@@ -1320,6 +1313,8 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 8,
   },
+
+  // ===== FORM FIELD GROUPS =====
   fieldGroup: {
     marginBottom: 16,
   },
@@ -1329,6 +1324,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#333',
   },
+
+  // ===== MODAL TRIGGER STYLES (Dropdowns) =====
   modalTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1346,7 +1343,10 @@ const styles = StyleSheet.create({
   },
   modalTriggerPlaceholder: {
     fontSize: 16,
+    color: '#999',
   },
+
+  // ===== TEXT INPUT STYLES =====
   textArea: {
     backgroundColor: 'white',
     borderWidth: 1,
@@ -1358,6 +1358,19 @@ const styles = StyleSheet.create({
     minHeight: 80,
     fontSize: 16,
   },
+  inputSmall: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 12,
+    minHeight: 32,
+    textAlign: 'center',
+  },
+
+  // ===== ITEMS TABLE SECTION =====
   itemsSection: {
     backgroundColor: '#fff',
     marginTop: 8,
@@ -1374,13 +1387,15 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   tableContainer: {
-    minWidth: 800,
+    minWidth: 800, // Fixed width for horizontal scrolling
     backgroundColor: 'white',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#d1d5db',
     overflow: 'hidden',
   },
+
+  // ===== TABLE HEADER STYLES =====
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f8f8',
@@ -1398,30 +1413,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  headerCellNumber: {
-    width: 40,
-  },
-  headerCellProduct: {
-    width: 200,
-  },
-  headerCellQty: {
-    width: 80,
-  },
-  headerCellUnit: {
-    width: 80,
-  },
-  headerCellDiscount: {
-    width: 120,
-  },
-  headerCellPrice: {
-    width: 150,
-  },
-  headerCellTotal: {
-    width: 150,
-  },
-  headerCellAction: {
-    width: 80,
-  },
+  
+  // ===== TABLE COLUMN WIDTHS =====
+  headerCellNumber: { width: 40 },
+  headerCellProduct: { width: 200 },
+  headerCellQty: { width: 80 },
+  headerCellUnit: { width: 80 },
+  headerCellDiscount: { width: 120 },
+  headerCellPrice: { width: 150 },
+  headerCellTotal: { width: 150 },
+  headerCellAction: { width: 80 },
+
+  // ===== TABLE ROW STYLES =====
   itemRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -1433,58 +1436,27 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: '#f0f0f0',
   },
-  cellNumber: {
-    width: 40,
-  },
-  cellProduct: {
-    width: 200,
-  },
-  cellQty: {
-    width: 80,
-  },
-  cellUnit: {
-    width: 80,
-  },
-  cellDiscount: {
-    width: 120,
-  },
-  cellPrice: {
-    width: 150,
-  },
-  cellTotal: {
-    width: 150,
-  },
-  cellAction: {
-    width: 80,
-  },
+  
+  // ===== CELL WIDTHS (Match header widths) =====
+  cellNumber: { width: 40 },
+  cellProduct: { width: 200 },
+  cellQty: { width: 80 },
+  cellUnit: { width: 80 },
+  cellDiscount: { width: 120 },
+  cellPrice: { width: 150 },
+  cellTotal: { width: 150 },
+  cellAction: { width: 80 },
+
+  // ===== CELL CONTENT STYLES =====
   rowNumberText: {
     textAlign: 'center',
     fontSize: 12,
     color: '#666',
   },
-  inputSmall: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 12,
-    minHeight: 32,
-    textAlign: 'center',
-  },
   unitText: {
     fontSize: 12,
     textAlign: 'center',
     color: '#666',
-  },
-  discountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  discountInput: {
-    flex: 1,
-    marginLeft: 4,
   },
   priceText: {
     fontSize: 12,
@@ -1498,6 +1470,18 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: 'bold',
   },
+
+  // ===== DISCOUNT CONTAINER =====
+  discountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  discountInput: {
+    flex: 1,
+    marginLeft: 4,
+  },
+
+  // ===== ACTION BUTTONS =====
   deleteButton: {
     padding: 6,
     alignSelf: 'center',
@@ -1505,15 +1489,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#fecaca',
-  },
-  emptyItems: {
-    padding: 20,
-    alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  emptyItemsText: {
-    color: '#666',
-    fontSize: 14,
   },
   addItemButton: {
     flexDirection: 'row',
@@ -1531,6 +1506,19 @@ const styles = StyleSheet.create({
     color: '#34C759',
     fontWeight: '600',
   },
+
+  // ===== EMPTY STATES =====
+  emptyItems: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  emptyItemsText: {
+    color: '#666',
+    fontSize: 14,
+  },
+
+  // ===== TOTALS SECTION =====
   totalsSection: {
     backgroundColor: 'white',
     borderRadius: 8,
@@ -1570,6 +1558,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#007AFF',
   },
+
+  // ===== SUBMIT BUTTON =====
   saveButton: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
@@ -1587,6 +1577,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+
+  // ===== ERROR STATES =====
   errorContainer: {
     backgroundColor: '#ffebee',
     padding: 12,
@@ -1611,6 +1603,8 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#d32f2f',
   },
+
+  // ===== MODAL STYLES =====
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1638,6 +1632,8 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
+
+  // ===== MODAL SEARCH =====
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1661,6 +1657,8 @@ const styles = StyleSheet.create({
     padding: 4,
     marginLeft: 8,
   },
+
+  // ===== MODAL LIST STYLES =====
   modalListContent: {
     paddingBottom: 16,
   },
@@ -1684,6 +1682,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1C1C1E',
   },
+
+  // ===== PRODUCT INFO IN MODAL =====
   productInfo: {
     flex: 1,
   },
@@ -1702,6 +1702,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
+
+  // ===== CUSTOMER INFO IN MODAL =====
   customerInfo: {
     flex: 1,
   },
@@ -1715,6 +1717,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+
+  // ===== EMPTY MODAL STATES =====
   emptyModal: {
     alignItems: 'center',
     padding: 40,

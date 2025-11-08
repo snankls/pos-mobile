@@ -80,7 +80,7 @@ export default function CustomersViewScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const formatCurrency = (amount: number) => {
@@ -168,7 +168,7 @@ export default function CustomersViewScreen() {
               onRequestClose={() => setModalVisible(false)}
             >
               <View style={styles.modalBackground}>
-                {/* ✅ Close Icon */}
+                {/* Close Icon */}
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setModalVisible(false)}
@@ -176,7 +176,7 @@ export default function CustomersViewScreen() {
                   <Ionicons name="close" size={28} color="#fff" />
                 </TouchableOpacity>
 
-                {/* ✅ Full Image */}
+                {/* Full Image */}
                 {selectedImage ? (
                   <Image
                     source={{ uri: selectedImage }}
@@ -208,32 +208,69 @@ export default function CustomersViewScreen() {
             <Text style={styles.sectionTitle}>Contact Information</Text>
           </View>
           
+          {/* Email */}
           <View style={styles.sectionContent}>
-            <DetailItem 
-              icon="mail-outline" 
-              label="Email" 
-              value={customer.email_address} 
-            />
-            <DetailItem 
-              icon="phone-portrait-outline" 
-              label="Mobile" 
-              value={customer.mobile_number} 
-            />
-            <DetailItem 
-              icon="call-outline" 
-              label="Phone" 
-              value={customer.phone_number} 
-            />
-            <DetailItem 
-              icon="logo-whatsapp" 
-              label="WhatsApp" 
-              value={customer.whatsapp} 
-            />
-            <DetailItem 
-              icon="location-outline" 
-              label="City" 
-              value={customer.city?.name} 
-            />
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="mail-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{customer.email_address}</Text>
+              </View>
+            </View>
+            
+            {/* Mobile Number */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="phone-portrait-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Mobile Number</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{customer.mobile_number}</Text>
+              </View>
+            </View>
+            
+            {/* Phone Number */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="call-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Phone Number</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{customer.phone_number}</Text>
+              </View>
+            </View>
+            
+            {/* WhatsApp */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="logo-whatsapp" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>WhatsApp</Text>
+                <TouchableOpacity 
+                  onPress={() => Linking.openURL(`whatsapp://send?phone=${customer.whatsapp}`)}
+                  disabled={!customer.whatsapp}
+                >
+                  <Text style={[styles.detailValue, styles.whatsappLink]} numberOfLines={1}>
+                    {customer.whatsapp || 'N/A'}
+                    {customer.whatsapp && ' ↗'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            {/* City */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="location-outline" size={18} color="#6B7280" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>City</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{customer.city?.name}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -244,6 +281,7 @@ export default function CustomersViewScreen() {
             <Text style={styles.sectionTitle}>Financial Information</Text>
           </View>
           
+          {/* Credit Balance */}
           <View style={styles.financialGrid}>
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel}>Credit Balance</Text>
@@ -251,6 +289,8 @@ export default function CustomersViewScreen() {
                 {settings.currency}{formatCurrency(customer.credit_balance || '0.00')}
               </Text>
             </View>
+
+            {/* Credit Limit */}
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel}>Credit Limit</Text>
               <Text style={styles.financialValue}>
@@ -267,7 +307,6 @@ export default function CustomersViewScreen() {
               <Ionicons name="home-outline" size={20} color="#374151" />
               <Text style={styles.sectionTitle}>Address</Text>
             </View>
-            
             <View style={styles.addressCard}>
               <Text style={styles.addressText}>{customer.address}</Text>
             </View>
@@ -328,10 +367,10 @@ export default function CustomersViewScreen() {
           </TouchableOpacity>
 
           {/* WhatsApp Button — only visible if mobile number exists */}
-          {customer.mobile_number ? (
+          {customer.whatsapp ? (
             <TouchableOpacity
               style={styles.whatsappButton}
-              onPress={() => Linking.openURL(`whatsapp://send?phone=${customer.mobile_number}`)}
+              onPress={() => Linking.openURL(`whatsapp://send?phone=${customer.whatsapp}`)}
             >
               <Ionicons name="logo-whatsapp" size={18} color="#fff" />
               <Text style={styles.buttonText}>WhatsApp</Text>
@@ -351,22 +390,8 @@ export default function CustomersViewScreen() {
   );
 }
 
-// Professional Detail Item Component
-const DetailItem = ({ icon, label, value }: any) => (
-  <View style={styles.detailItem}>
-    <View style={styles.detailIcon}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
-    </View>
-    <View style={styles.detailContent}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={1}>
-        {value || '-'}
-      </Text>
-    </View>
-  </View>
-);
-
 const styles = StyleSheet.create({
+  // ===== LAYOUT & CONTAINERS =====
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
@@ -374,37 +399,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#F9FAFB',
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+
+  // ===== HEADER SECTION =====
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -440,6 +436,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
+
+  // ===== PROFILE CARD =====
   profileCard: {
     backgroundColor: '#fff',
     margin: 20,
@@ -471,25 +469,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#E5E7EB',
   },
-  statusBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  activeBadge: {
-    backgroundColor: '#34C759',
-  },
-  inactiveBadge: {
-    backgroundColor: '#FF3B30',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
   profileInfo: {
     alignItems: 'center',
   },
@@ -509,6 +488,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
+
+  // ===== STATUS BADGE =====
+  statusBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activeBadge: {
+    backgroundColor: '#34C759',
+  },
+  inactiveBadge: {
+    backgroundColor: '#FF3B30',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  // ===== CONTENT SECTIONS =====
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
@@ -535,9 +537,11 @@ const styles = StyleSheet.create({
   sectionContent: {
     gap: 12,
   },
+
+  // ===== DETAIL ITEMS =====
   detailItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   detailIcon: {
     width: 32,
@@ -557,6 +561,12 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+  whatsappLink: {
+    color: '#25D366',
+    textDecorationLine: 'underline',
+  },
+
+  // ===== FINANCIAL SECTION =====
   financialGrid: {
     flexDirection: 'row',
     gap: 16,
@@ -579,6 +589,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+
+  // ===== ADDRESS SECTION =====
   addressCard: {
     backgroundColor: '#F8FAFC',
     padding: 16,
@@ -591,6 +603,8 @@ const styles = StyleSheet.create({
     color: '#374151',
     lineHeight: 20,
   },
+
+  // ===== ACTION BUTTONS =====
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
@@ -646,14 +660,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
+  // ===== MODAL STYLES =====
   modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeArea: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -670,5 +680,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 6,
+  },
+
+  // ===== ERROR & LOADING STATES =====
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F9FAFB',
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });

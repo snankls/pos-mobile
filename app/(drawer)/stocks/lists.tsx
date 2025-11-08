@@ -135,7 +135,7 @@ export default function StocksListsScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const updatePageRecords = (all: Stock[], currentPage: number, perPageCount: number) => {
@@ -175,13 +175,11 @@ export default function StocksListsScreen() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return '#34C759';
-      case 'inactive':
-        return '#FF3B30';
-      default:
-        return '#6571ff';
+    switch (status?.toLowerCase()) {
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      case 'posted': return '#007AFF';
+      default: return '#34C759';
     }
   };
 
@@ -243,7 +241,7 @@ export default function StocksListsScreen() {
       {Object.keys(COLUMN_WIDTHS).map((key) => {
         const typedKey = key as keyof typeof COLUMN_WIDTHS;
 
-        // ✅ valid sortable fields
+        // valid sortable fields
         const sortableKeys: (keyof Stock)[] = [
           'stock_number',
           'stock_date',
@@ -436,7 +434,14 @@ export default function StocksListsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
+  },
+  
   headerRow: {
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -446,11 +451,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA'
   },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#000',
   },
+  
+  headerText: { 
+    fontWeight: 'bold', 
+    fontSize: 14, 
+    color: '#333', 
+    paddingHorizontal: 10 
+  },
+  
+  cellText: { 
+    fontSize: 14, 
+    color: '#333', 
+    paddingHorizontal: 10 
+  },
+  
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -459,11 +491,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
   },
+  
   addButtonText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '500',
   },
+  
+  retryButton: { 
+    padding: 10, 
+    backgroundColor: '#007AFF', 
+    borderRadius: 6 
+  },
+  
+  retryButtonText: { 
+    color: '#fff', 
+    fontWeight: 'bold' 
+  },
+  
+  actionButtons: { 
+    flexDirection: 'row', 
+    gap: 10 
+  },
+  
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  
+  viewButton: {
+    backgroundColor: '#E9F9EE',
+  },
+  
+  editButton: { 
+    backgroundColor: '#E8F2FF' 
+  },
+  
+  deleteButton: { 
+    backgroundColor: '#FFEAEA' 
+  },
+
+  // ==============================
+  // SEARCH & INPUT STYLES
+  // ==============================
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,12 +547,17 @@ const styles = StyleSheet.create({
     margin: 10,
     height: 40,
   },
+  
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: '#111827',
     paddingVertical: 5,
   },
+
+  // ==============================
+  // TABLE & DATA STYLES
+  // ==============================
   tableHeader: {
     flexDirection: 'row', 
     padding: 12, 
@@ -487,6 +566,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5EA',
     minWidth: 600 
   },
+  
   tableRow: { 
     flexDirection: 'row', 
     padding: 12, 
@@ -495,8 +575,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     minWidth: 600 
   },
-  headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
+  
   statusBadge: { 
     marginHorizontal: 10,
     paddingVertical: 4,
@@ -504,49 +583,30 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     alignSelf: 'flex-start',
   },
+  
   statusText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 12,
   },
-  actionButtons: { flexDirection: 'row', gap: 10 },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  actionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  viewButton: {
-    backgroundColor: '#E9F9EE',
-  },
-  editButton: { backgroundColor: '#E8F2FF' },
-  deleteButton: { backgroundColor: '#FFEAEA' },
 
+  // ==============================
+  // STATUS & INDICATOR STYLES
+  // ==============================
+  errorContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  
+  errorText: { 
+    fontSize: 16, 
+    color: '#FF3B30', 
+    textAlign: 'center', 
+    marginVertical: 10 
+  },
+  
   noDataContainer: {
     padding: 22,
   },
-  noDataText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'left',
-  },
-  
-  pagination: { marginTop: 15, marginBottom: 30, alignItems: 'center', justifyContent: 'center' },
-  paginationText: { fontSize: 12, color: '#555', marginBottom: 5 },
-  paginationControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  pageButton: { flexDirection: 'row', alignItems: 'center' },
-  pageButtonDisabled: { opacity: 0.5 },
-  pageIndicatorText: { fontSize: 14, color: '#333', marginHorizontal: 10 },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 16, color: '#FF3B30', textAlign: 'center', marginVertical: 10 },
-  retryButton: { padding: 10, backgroundColor: '#007AFF', borderRadius: 6 },
-  retryButtonText: { color: '#fff', fontWeight: 'bold' },
 });

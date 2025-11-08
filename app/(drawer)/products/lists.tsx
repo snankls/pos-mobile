@@ -162,7 +162,7 @@ export default function ProductsListsScreen() {
     }
   };
 
-  // ✅ Show global loader until data fetched
+  // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
   const updatePageRecords = (all: Product[], currentPage: number, perPageCount: number) => {
@@ -202,13 +202,10 @@ export default function ProductsListsScreen() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return '#34C759';
-      case 'inactive':
-        return '#FF3B30';
-      default:
-        return '#34C759';
+    switch (status?.toLowerCase()) {
+      case 'active': return '#34C759';
+      case 'inactive': return '#FF3B30';
+      default: return '#34C759';
     }
   };
 
@@ -237,7 +234,7 @@ export default function ProductsListsScreen() {
     setPage(1);
   };
 
-  // ✅ Column definitions (match actual Product fields)
+  // Column definitions (match actual Product fields)
   const COLUMN_WIDTHS = {
     id: 50,
     image: 70,
@@ -270,7 +267,7 @@ export default function ProductsListsScreen() {
     actions: 'Actions',
   };
 
-  // ✅ TableHeader with all sortable columns
+  // TableHeader with all sortable columns
   const TableHeader = () => (
     <View style={styles.tableHeader}>
       {Object.keys(COLUMN_WIDTHS).map((key) => {
@@ -367,7 +364,7 @@ export default function ProductsListsScreen() {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalBackground}>
-            {/* ✅ Close Icon */}
+            {/* Close Icon */}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setModalVisible(false)}
@@ -375,7 +372,7 @@ export default function ProductsListsScreen() {
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            {/* ✅ Full Image */}
+            {/* Full Image */}
             {selectedImage ? (
               <Image
                 source={{ uri: selectedImage }}
@@ -391,17 +388,6 @@ export default function ProductsListsScreen() {
             )}
           </View>
         </Modal>
-
-
-        {/* <Image
-          source={
-            item.image_url
-              ? { uri: `${IMAGE_URL}/products/${item.image_url}` }
-              : require('../../../assets/images/placeholder.jpg')
-          }
-          style={styles.imageContainer}
-          resizeMode="cover"
-        /> */}
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.sku }}>
@@ -433,7 +419,7 @@ export default function ProductsListsScreen() {
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.stocks }}>
-        <Text style={styles.cellText}>{item.stocks || '-'}</Text>
+        <Text style={styles.cellText}>{item.stocks}</Text>
       </View>
 
       <View style={{ width: COLUMN_WIDTHS.status }}>
@@ -555,7 +541,14 @@ export default function ProductsListsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // ==============================
+  // LAYOUT & CONTAINER STYLES
+  // ==============================
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
+  },
+  
   headerRow: {
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -565,24 +558,35 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA'
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  addButton: {
+  
+  tableHeader: {
     flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    minWidth: 900,
+  },
+  
+  tableRow: {
+    flexDirection: 'row',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    minWidth: 900,
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '500',
+  
+  noDataContainer: {
+    padding: 22,
   },
+  
+  errorContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -592,44 +596,96 @@ const styles = StyleSheet.create({
     margin: 10,
     height: 40,
   },
+  
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ==============================
+  // TYPOGRAPHY STYLES
+  // ==============================
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  
+  addButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  
+  headerText: { 
+    fontWeight: 'bold', 
+    fontSize: 14, 
+    color: '#333', 
+    paddingHorizontal: 10 
+  },
+  
+  cellText: { 
+    fontSize: 14, 
+    color: '#333', 
+    paddingHorizontal: 10 
+  },
+  
+  statusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  
+  noDataText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
+  },
+  
+  errorText: { 
+    fontSize: 16, 
+    color: '#FF3B30', 
+    textAlign: 'center', 
+    marginVertical: 10 
+  },
+  
+  retryButtonText: { 
+    color: '#fff', 
+    fontWeight: 'bold' 
+  },
+  
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: '#111827',
     paddingVertical: 5,
   },
-  tableHeader: {
+
+  // ==============================
+  // BUTTON & INTERACTIVE STYLES
+  // ==============================
+  addButton: {
     flexDirection: 'row',
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    minWidth: 900,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     alignItems: 'center',
-    minWidth: 900,
+    backgroundColor: '#007AFF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  headerText: { fontWeight: 'bold', fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  cellText: { fontSize: 14, color: '#333', paddingHorizontal: 10 },
-  imageContainer: { width: 40, height: 40, borderRadius: 6, marginHorizontal: 10 },
-  statusBadge: { 
-    marginHorizontal: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12, 
-    alignSelf: 'flex-start',
+  
+  retryButton: { 
+    padding: 10, 
+    backgroundColor: '#007AFF', 
+    borderRadius: 6 
   },
-  statusText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
+  
+  actionButtons: { 
+    flexDirection: 'row', 
+    gap: 10 
   },
-  actionButtons: { flexDirection: 'row', gap: 10 },
+  
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -638,54 +694,19 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 5,
   },
-  actionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
+  
   viewButton: {
     backgroundColor: '#E9F9EE',
   },
-  editButton: { backgroundColor: '#E8F2FF' },
-  deleteButton: { backgroundColor: '#FFEAEA' },
-
-  noDataContainer: {
-    padding: 22,
+  
+  editButton: { 
+    backgroundColor: '#E8F2FF' 
   },
-  noDataText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'left',
+  
+  deleteButton: { 
+    backgroundColor: '#FFEAEA' 
   },
-
-  pagination: { marginTop: 15, marginBottom: 30, alignItems: 'center', justifyContent: 'center' },
-  paginationText: { fontSize: 12, color: '#555', marginBottom: 5 },
-  paginationControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  pageButton: { flexDirection: 'row', alignItems: 'center' },
-  pageButtonDisabled: { opacity: 0.5 },
-  pageIndicatorText: { fontSize: 14, color: '#333', marginHorizontal: 10 },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 16, color: '#FF3B30', textAlign: 'center', marginVertical: 10 },
-  retryButton: { padding: 10, backgroundColor: '#007AFF', borderRadius: 6 },
-  retryButtonText: { color: '#fff', fontWeight: 'bold' },
-
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '90%',
-    height: '80%',
-    borderRadius: 10,
-  },
+  
   closeButton: {
     position: 'absolute',
     top: 40,
@@ -694,5 +715,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 6,
+  },
+
+  // ==============================
+  // IMAGE & MEDIA STYLES
+  // ==============================
+  imageContainer: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 6, 
+    marginHorizontal: 10 
+  },
+  
+  fullImage: {
+    width: '90%',
+    height: '80%',
+    borderRadius: 10,
+  },
+
+  // ==============================
+  // STATUS & BADGE STYLES
+  // ==============================
+  statusBadge: { 
+    marginHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12, 
+    alignSelf: 'flex-start',
   },
 });

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../components/LoadingScreen';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Dashboard() {
+export default function DashboardScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   const { user, token } = useAuth();
