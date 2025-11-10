@@ -20,11 +20,11 @@ import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../../components/LoadingScreen';
 import { useAuth } from '../../../contexts/AuthContext';
 
-interface Customer {
-  id: string;
-  name: string;
-  code: string;
-}
+// interface Customer {
+//   id: string;
+//   name: string;
+//   code: string;
+// }
 
 interface Product {
   id: string;
@@ -42,7 +42,7 @@ interface Product {
 
 interface Invoice {
   id?: string;
-  invoice_number: string;
+  invoice_id: string;
   customer_id: string;
   customer_name?: string;
   return_date: string;
@@ -77,7 +77,7 @@ interface InvoiceNumber {
 
 interface ReturnData {
   id?: string;
-  invoice_number?: string;
+  invoice_id?: string;
   customer_id?: string;
   customer_name?: string;
   return_date?: string;
@@ -107,7 +107,7 @@ export default function ReturnsSetupScreen() {
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<Invoice>({
-    invoice_number: '',
+    invoice_id: '',
     customer_id: '',
     customer_name: '',
     return_date: new Date().toISOString().split('T')[0],
@@ -116,7 +116,6 @@ export default function ReturnsSetupScreen() {
   });
 
   const [invoiceNumbers, setInvoiceNumbers] = useState<InvoiceNumber[]>([]);
-  // const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [originalInvoiceItems, setOriginalInvoiceItems] = useState<InvoiceItem[]>([]);
   const [itemsList, setItemsList] = useState<InvoiceItem[]>([]);
@@ -146,7 +145,7 @@ export default function ReturnsSetupScreen() {
 
   const resetForm = () => {
     setCurrentRecord({
-      invoice_number: '',
+      invoice_id: '',
       customer_id: '',
       customer_name: '',
       return_date: new Date().toISOString().split('T')[0],
@@ -415,7 +414,7 @@ export default function ReturnsSetupScreen() {
       // Set basic return data
       const updatedRecord = {
         id: returnData.id?.toString() || '',
-        invoice_number: returnData.invoice_number || '',
+        invoice_id: returnData.invoice_id || '',
         customer_id: returnData.customer_id?.toString() || '',
         customer_name: returnData.customer_name || '',
         return_date: returnData.return_date?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -426,7 +425,7 @@ export default function ReturnsSetupScreen() {
       setCurrentRecord(updatedRecord);
       
       const invoiceDetailsResponse = await axios.get(
-        `${API_URL}/invoices/for-return/${returnData.invoice_number}?current_return_id=${returnId}`, 
+        `${API_URL}/invoice/returns/${returnData.invoice_id}`, 
         {
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -726,7 +725,7 @@ export default function ReturnsSetupScreen() {
 
   // Add new item row
   const addItemRow = () => {
-    if (!currentRecord.invoice_number) {
+    if (!currentRecord.invoice_id) {
       Alert.alert('Error', 'Please select an invoice first');
       return;
     }
@@ -920,7 +919,7 @@ export default function ReturnsSetupScreen() {
       const formData = {
         ...currentRecord,
         id: currentRecord.id, // ✅ add this
-        invoice_number: currentRecord.invoice_number,
+        invoice_id: currentRecord.invoice_id,
         status: finalStatus,
         total_quantity: totalQuantity.toFixed(2),
         total_price: totalPrice.toFixed(2),
@@ -1030,9 +1029,9 @@ export default function ReturnsSetupScreen() {
         {/* Product Selection */}
         <View style={[styles.cell, styles.cellProduct]}>
           <TouchableOpacity
-            style={[styles.modalTrigger, (formErrors[`items[${index}].product_id`] || !currentRecord.invoice_number) && styles.inputError]}
+            style={[styles.modalTrigger, (formErrors[`items[${index}].product_id`] || !currentRecord.invoice_id) && styles.inputError]}
             onPress={() => {
-              if (!currentRecord.invoice_number) {
+              if (!currentRecord.invoice_id) {
                 Alert.alert('Error', 'Please select an invoice first');
                 return;
               }
@@ -1042,7 +1041,7 @@ export default function ReturnsSetupScreen() {
               setShowProductPickers(newPickers);
               setProductSearch('');
             }}
-            disabled={isLoading || !currentRecord.invoice_number}
+            disabled={isLoading || !currentRecord.invoice_id}
           >
             <Text style={!item.product_id ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
               {getSelectedProductName(item.product_id)}
@@ -1292,8 +1291,8 @@ export default function ReturnsSetupScreen() {
             onPress={() => setShowInvoicePicker(true)}
             disabled={isLoading || isEditMode}
           >
-            <Text style={!currentRecord.invoice_number ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
-              {getSelectedInvoiceName(currentRecord.invoice_number)}
+            <Text style={!currentRecord.invoice_id ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
+              {getSelectedInvoiceName(currentRecord.invoice_id)}
             </Text>
             <Ionicons name="chevron-down" size={20} color="#6B7280" />
           </TouchableOpacity>
@@ -1402,9 +1401,9 @@ export default function ReturnsSetupScreen() {
           {/* Add Item Button */}
           {currentRecord.status !== 'Posted' && (
           <TouchableOpacity 
-            style={[styles.addItemButton, (!currentRecord.invoice_number || isLoading) && styles.addItemButtonDisabled]} 
+            style={[styles.addItemButton, (!currentRecord.invoice_id || isLoading) && styles.addItemButtonDisabled]} 
             onPress={addItemRow}
-            disabled={!currentRecord.invoice_number || isLoading}
+            disabled={!currentRecord.invoice_id || isLoading}
           >
             <Ionicons name="add-circle-outline" size={20} color="#34C759" />
             <Text style={styles.addItemText}>Add Return Item</Text>
@@ -1546,7 +1545,7 @@ export default function ReturnsSetupScreen() {
                   <TouchableOpacity
                     style={[
                       styles.modalItem,
-                      currentRecord.invoice_number === invoice.invoice_number && styles.selectedModalItem
+                      currentRecord.invoice_id === invoice.invoice_number && styles.selectedModalItem
                     ]}
                     onPress={() => handleInvoiceSelect(invoice.id)}
                   >
@@ -1558,7 +1557,7 @@ export default function ReturnsSetupScreen() {
                         Customer: {invoice.customer_name}
                       </Text>
                     </View>
-                    {currentRecord.invoice_number === invoice.invoice_number && (
+                    {currentRecord.invoice_id === invoice.invoice_number && (
                       <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
                     )}
                   </TouchableOpacity>

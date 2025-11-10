@@ -26,7 +26,7 @@ export default function CompaniesScreen() {
   const [company, setCompany] = useState<any>({
     id: '',
     name: '',
-    description: '',
+    address: '',
     image: null
   });
 
@@ -54,7 +54,7 @@ export default function CompaniesScreen() {
       let data = Array.isArray(res.data) ? res.data[0] : res.data?.data || res.data;
 
       if (!data) {
-        setCompany({ id: '', name: '', description: '', image: null });
+        setCompany({ id: '', name: '', address: '', image: null });
         setImagePreview(null);
         return;
       }
@@ -65,7 +65,7 @@ export default function CompaniesScreen() {
       setCompany({
         id: data.id || '',
         name: data.name || '',
-        description: data.description || '',
+        address: data.address || '',
         image: imageFileName,
       });
 
@@ -139,7 +139,7 @@ export default function CompaniesScreen() {
     try {
       const formData = new FormData();
       formData.append('name', company.name?.trim() || '');
-      formData.append('description', company.description?.trim() || '');
+      formData.append('address', company.address?.trim() || '');
       formData.append('_method', 'PUT');
 
       const isLocalImage = imagePreview?.startsWith('file:') || imagePreview?.startsWith('data:');
@@ -200,18 +200,18 @@ export default function CompaniesScreen() {
         {formErrors.name && <Text style={styles.errorText}>{formErrors.name[0]}</Text>}
       </View>
 
-      {/* Description */}
+      {/* Address */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Description</Text>
+        <Text style={styles.label}>Address</Text>
         <TextInput
-          style={[styles.input, styles.textArea, formErrors.description && styles.inputError]}
-          value={company.description || ''}
-          onChangeText={(text) => handleInputChange('description', text)}
+          style={[styles.input, styles.textArea, formErrors.address && styles.inputError]}
+          value={company.address || ''}
+          onChangeText={(text) => handleInputChange('address', text)}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
         />
-        {formErrors.description && <Text style={styles.errorText}>{formErrors.description[0]}</Text>}
+        {formErrors.address && <Text style={styles.errorText}>{formErrors.address[0]}</Text>}
       </View>
 
       {/* Image Upload */}
