@@ -23,8 +23,8 @@ export default function LoginScreen() {
 
   const router = useRouter();
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState('snankls');
-  const [password, setPassword] = useState('password123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' | null }>({
