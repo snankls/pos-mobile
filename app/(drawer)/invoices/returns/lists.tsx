@@ -376,9 +376,14 @@ export default function ReturnsListsScreen() {
           {/* Delete Button */}
           <TouchableOpacity
             onPress={() => handleDelete(item)}
-            style={[styles.actionButton, styles.deleteButton]}
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              (item.status === 'Posted') && styles.deleteButtonDisabled
+            ]}
+            disabled={item.status === 'Posted'}
           >
-            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+            <Ionicons name="trash-outline" size={18} color={item.status === 'Posted' ? '#ccc' : '#FF3B30'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -569,13 +574,16 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   viewButton: {
-    backgroundColor: '#E9F9EE', // Light green background
+    backgroundColor: '#E9F9EE',
   },
   editButton: { 
-    backgroundColor: '#E8F2FF' // Light blue background
+    backgroundColor: '#E8F2FF'
   },
   deleteButton: { 
-    backgroundColor: '#FFEAEA' // Light red background
+    backgroundColor: '#FFEAEA'
+  },
+  deleteButtonDisabled: {
+    opacity: 0.7,
   },
 
   // ===== EMPTY STATE =====

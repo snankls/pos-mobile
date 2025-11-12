@@ -35,7 +35,7 @@ interface Product {
   unit_id: string;
   unit_name: string;
   product_label?: string;
-  price?: string;
+  price?: number;
 }
 
 interface Invoice {
@@ -57,8 +57,8 @@ interface InvoiceItem {
   unit_name: string;
   discountType: string;
   discountValue: string;
-  price: string;
-  total_amount: string;
+  price: string | number;
+  total_amount: string | number;
 }
 
 export default function InvoicesSetupScreen() {
@@ -122,29 +122,77 @@ export default function InvoicesSetupScreen() {
     setIsEditMode(false);
   };
 
+  // Update row total when quantity or discount changes
+  const updateRowTotal = (index: number) => {
+    setItemsList(prevItems => {
+      const updated = [...prevItems];
+      const item = updated[index];
+      if (!item) return prevItems;
+
+      const qty = parseFloat(item.quantity) || 0;
+      const price = Number(item.price) || 0; // ✅ Ensure number
+      const discountValue = parseFloat(item.discountValue) || 0;
+
+      let discountAmount = 0;
+      if (item.discountType === 'Percentage') {
+        discountAmount = (qty * price * discountValue) / 100;
+      } else {
+        discountAmount = discountValue;
+      }
+
+      const total = qty * price - discountAmount;
+      updated[index].total_amount = Math.max(0, parseFloat(total.toFixed(2)));
+
+      return updated;
+    });
+  };
+
   // Update all totals
   const updateTotals = () => {
     let quantityTotal = 0;
     let priceTotal = 0;
     let discountTotal = 0;
+    let grandTotalCalc = 0;
 
     itemsList.forEach(item => {
-      if (item.product_id) {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const itemTotal = parseFloat(item.total_amount) || 0;
-        
-        quantityTotal += quantity;
-        priceTotal += price * quantity;
-        discountTotal += (price * quantity) - itemTotal;
-      }
+      // Include all items with product_id
+      if (!item.product_id) return;
+
+      const qty = parseFloat(item.quantity) || 0;
+      const price = Number(item.price) || 0; // ✅ Ensure number
+      const discountValue = parseFloat(item.discountValue) || 0;
+      const discountType = item.discountType || 'Fixed';
+
+      const subtotal = qty * price;
+
+      const discount = discountType === 'Percentage'
+        ? (subtotal * discountValue) / 100
+        : discountValue;
+
+      const total = subtotal - discount;
+
+      quantityTotal += qty;
+      priceTotal += subtotal;
+      discountTotal += discount;
+      grandTotalCalc += total;
     });
 
     setTotalQuantity(quantityTotal);
     setTotalPrice(priceTotal);
     setTotalDiscount(discountTotal);
-    setGrandTotal(priceTotal - discountTotal);
+    setGrandTotal(grandTotalCalc);
   };
+
+  useEffect(() => {
+    if (itemsList.length > 0) {
+      updateTotals();
+    } else {
+      setTotalQuantity(0);
+      setTotalPrice(0);
+      setTotalDiscount(0);
+      setGrandTotal(0);
+    }
+  }, [itemsList]);
 
   const fetchInitialData = async () => {
     try {
@@ -219,11 +267,6 @@ export default function InvoicesSetupScreen() {
     }
   }, [customers, customerSearch]);
 
-  // Update totals when itemsList changes
-  useEffect(() => {
-    updateTotals();
-  }, [itemsList]);
-
   const fetchStatus = async () => {
     if (!token) return;
 
@@ -263,24 +306,36 @@ export default function InvoicesSetupScreen() {
       
       const invoiceData = response.data;
       
-      // Use details array instead of items
       const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
       
-      // Transform items data to match our interface - ensure IDs are strings
-      const transformedItems = itemsData.map((item: any) => ({
-        id: item.id?.toString() || '',
-        product_id: item.product_id?.toString() || '',
-        product_name: item.product_name || '',
-        quantity: item.quantity ? item.quantity.toString() : '1',
-        unit_id: item.unit_id?.toString() || '',
-        unit_name: item.unit_name || '',
-        discountType: item.discount_type || 'Percentage',
-        discountValue: item.discount_value ? item.discount_value.toString() : '0',
-        price: item.sale_price ? item.sale_price.toString() : '0',
-        total_amount: item.total ? item.total.toString() : '0'
-      }));
+      // ✅ Transform items with numeric price and proper calculations
+      const transformedItems = itemsData.map((item: any) => {
+        const qty = Number(item.quantity || 1);
+        const price = Number(item.price || item.sale_price || 0);
+        const discountValue = Number(item.discount_value || 0);
+        const discountType = item.discount_type || 'Fixed';
+        
+        // Calculate total
+        const subtotal = qty * price;
+        const discountAmount = discountType === 'Percentage' 
+          ? (subtotal * discountValue) / 100 
+          : discountValue;
+        const totalAmount = subtotal - discountAmount;
 
-      // Set the current record with fetched data - ensure customer_id is string
+        return {
+          id: item.id?.toString() || '',
+          product_id: item.product_id?.toString() || '',
+          product_name: item.product_name || '',
+          quantity: String(qty),
+          unit_id: item.unit_id?.toString() || '',
+          unit_name: item.unit_name || '',
+          discountType: discountType,
+          discountValue: String(discountValue),
+          price: price, // ✅ Store as number
+          total_amount: Math.max(0, totalAmount) // ✅ Store as number
+        };
+      });
+
       const updatedRecord = {
         id: invoiceData.id?.toString() || '',
         invoice_number: invoiceData.invoice_number,
@@ -292,11 +347,8 @@ export default function InvoicesSetupScreen() {
       };
       
       setCurrentRecord(updatedRecord);
-
-      // Set items list
       setItemsList(transformedItems);
       
-      // Initialize product pickers array
       const pickersArray = new Array(transformedItems.length).fill(false);
       setShowProductPickers(pickersArray);
       setShowDiscountTypePickers(pickersArray);
@@ -411,9 +463,6 @@ export default function InvoicesSetupScreen() {
     }
   };
 
-  // Show global loader until data fetched
-  if (loading) return <LoadingScreen />;
-
   // Date handling
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -451,17 +500,29 @@ export default function InvoicesSetupScreen() {
     const selectedProduct = products.find(p => p.id === productId);
     if (selectedProduct) {
       const updatedItems = [...itemsList];
+      const qty = Number(updatedItems[index]?.quantity || 1);
+      const price = Number(selectedProduct.sale_price || 0);
+      const discountValue = Number(updatedItems[index]?.discountValue || 0);
+      const discountType = updatedItems[index]?.discountType || 'Fixed';
+      
+      // Calculate total
+      const subtotal = qty * price;
+      const discountAmount = discountType === 'Percentage' 
+        ? (subtotal * discountValue) / 100 
+        : discountValue;
+      const totalAmount = subtotal - discountAmount;
+      
       updatedItems[index] = {
         ...updatedItems[index],
         product_id: productId,
         product_name: selectedProduct.name,
-        price: selectedProduct.sale_price,
+        price: price, // ✅ Store as number
         unit_id: selectedProduct.unit_id,
         unit_name: selectedProduct.unit_name,
-        quantity: updatedItems[index].quantity || '1',
-        discountType: updatedItems[index].discountType || 'Percentage',
-        discountValue: updatedItems[index].discountValue || '0',
-        total_amount: selectedProduct.sale_price
+        quantity: String(qty),
+        discountType: discountType,
+        discountValue: String(discountValue),
+        total_amount: Math.max(0, totalAmount) // ✅ Calculate and store as number
       };
       setItemsList(updatedItems);
       
@@ -469,8 +530,6 @@ export default function InvoicesSetupScreen() {
       newPickers[index] = false;
       setShowProductPickers(newPickers);
       setProductSearch('');
-      
-      updateRowTotal(index);
     }
   };
 
@@ -564,35 +623,36 @@ export default function InvoicesSetupScreen() {
     );
   };
 
-  // Update row total when quantity or discount changes
-  const updateRowTotal = (index: number) => {
-    const updatedItems = [...itemsList];
-    const item = updatedItems[index];
-    
-    if (item.product_id && item.quantity && item.price) {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discountValue = parseFloat(item.discountValue) || 0;
-      
-      let discountAmount = 0;
-      if (item.discountType === 'Percentage') {
-        discountAmount = (price * quantity * discountValue) / 100;
-      } else {
-        discountAmount = discountValue;
-      }
-      
-      const total = (price * quantity) - discountAmount;
-      item.total_amount = Math.max(0, total).toFixed(2);
-      setItemsList(updatedItems);
-    }
-  };
-
   const clearError = (field: string) => {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
   };
 
+  
   // Form submission
-  const handleSubmit = async () => {
+  const handleSubmit = async (isPost: boolean) => {
+    // 🔹 If posting, confirm first
+    if (isPost) {
+      Alert.alert(
+        "Confirm Post",
+        "Are you sure you want to post this invoice return? Once posted, it cannot be edited.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Yes, Post",
+            onPress: async () => {
+              await handleSubmitConfirmed(true);
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // 🔹 Otherwise, run directly (for Save)
+    await handleSubmitConfirmed(false);
+  };
+  
+  const handleSubmitConfirmed = async (isPost: boolean) => {
     setIsLoading(true);
     setGlobalErrorMessage('');
     setFormErrors({});
@@ -604,6 +664,7 @@ export default function InvoicesSetupScreen() {
         total_price: totalPrice.toFixed(2),
         total_discount: totalDiscount.toFixed(2),
         grand_total: grandTotal.toFixed(2),
+        status: isPost ? 'Posted' : currentRecord.status,
         items: itemsList.map(item => ({
           id: item.id,
           product_id: item.product_id,
@@ -681,7 +742,7 @@ export default function InvoicesSetupScreen() {
 
   const getSelectedStatusName = (statusKey: string) => {
     const status = statusOptions.find(s => s.key === statusKey);
-    return status ? status.value : 'Select Status';
+    return status ? status.value : 'Select One';
   };
 
   const renderItemRow = ({ item, index }: { item: InvoiceItem; index: number }) => {
@@ -954,9 +1015,12 @@ export default function InvoicesSetupScreen() {
         {/* Action */}
         <View style={[styles.cell, styles.cellAction]}>
           <TouchableOpacity
-            style={styles.deleteButton}
+            style={[
+              styles.deleteButton,
+              (isLoading || currentRecord.status === 'Posted') && styles.deleteButtonDisabled
+            ]}
             onPress={() => deleteItemRow(index)}
-            disabled={isLoading}
+            disabled={isLoading || currentRecord.status === 'Posted'}
           >
             <Ionicons name="trash-outline" size={16} color="#FF3B30" />
           </TouchableOpacity>
@@ -964,6 +1028,9 @@ export default function InvoicesSetupScreen() {
       </View>
     );
   };
+
+  // Show global loader until data fetched
+  if (loading) return <LoadingScreen />;
 
   return (
     <KeyboardAvoidingView 
@@ -1037,16 +1104,36 @@ export default function InvoicesSetupScreen() {
         {/* Status */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Status <Text style={styles.errorText}>*</Text></Text>
-          <TouchableOpacity
-            style={[styles.modalTrigger, formErrors.status && styles.inputError]}
-            onPress={() => setShowStatusPicker(true)}
-            disabled={isLoading}
-          >
-            <Text style={!currentRecord.status ? styles.modalTriggerPlaceholder : styles.modalTriggerText}>
-              {getSelectedStatusName(currentRecord.status)}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
-          </TouchableOpacity>
+          {currentRecord.status === 'Posted' ? (
+            <View
+              style={[
+                styles.modalTrigger,
+                { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' },
+              ]}
+            >
+              <Text style={[styles.modalTriggerText, { color: '#6b7280' }]}>
+                Posted
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.modalTrigger, formErrors.status && styles.inputError]}
+              onPress={() => setShowStatusPicker(true)}
+              disabled={isLoading}
+            >
+              <Text
+                style={
+                  !currentRecord.status
+                    ? styles.modalTriggerPlaceholder
+                    : styles.modalTriggerText
+                }
+              >
+                {getSelectedStatusName(currentRecord.status)}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          )}
+
           {formErrors.status && (
             <Text style={styles.errorText}>{formErrors.status[0]}</Text>
           )}
@@ -1150,23 +1237,54 @@ export default function InvoicesSetupScreen() {
         )}
 
         {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, (isLoading || itemsList.length === 0) && styles.saveButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isLoading || itemsList.length === 0}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.primaryButton,
+              (isLoading || currentRecord.status === 'Posted') && styles.buttonDisabled
+            ]}
+            onPress={() => handleSubmit(false)}
+            disabled={isLoading || currentRecord.status === 'Posted'}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.secondaryButton,
+              (isLoading || currentRecord.status === 'Posted') && styles.buttonDisabled
+            ]}
+            onPress={() => handleSubmit(true)}
+            disabled={isLoading || currentRecord.status === 'Posted'}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Invoice Post</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {globalErrorMessage ? (
           <View style={styles.errorContainer}>
             <Text style={styles.globalError}>{globalErrorMessage}</Text>
           </View>
         ) : null}
+        
+        {/* Status Message */}
+        {currentRecord.status === 'Posted' && (
+          <View style={styles.statusMessage}>
+            <Text style={styles.statusMessageText}>
+              Invoice has been posted and cannot be changed.
+            </Text>
+          </View>
+        )}
 
         {/* Modals */}
         {showDatePicker && (
@@ -1515,6 +1633,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fecaca',
   },
+  deleteButtonDisabled: {
+    opacity: 0.5,
+  },
   addItemButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1585,22 +1706,33 @@ const styles = StyleSheet.create({
   },
 
   // ===== SUBMIT BUTTON =====
-  saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
     marginBottom: 20,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#C7C7CC',
+  button: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 6,
   },
-  saveButtonText: {
+  buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  primaryButton: {
+    backgroundColor: '#007AFF',
+  },
+  secondaryButton: {
+    backgroundColor: '#333',
+  },
+  buttonDisabled: {
+    backgroundColor: '#C7C7CC',
   },
 
   // ===== ERROR STATES =====
@@ -1610,6 +1742,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
   },
+  statusMessage: {
+    backgroundColor: '#ffecb3',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  statusMessageText: {
+    color: '#333',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
   globalError: {
     color: '#d32f2f',
     fontSize: 14,

@@ -20,20 +20,14 @@ import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '../../../components/LoadingScreen';
 import { useAuth } from '../../../contexts/AuthContext';
 
-// interface Customer {
-//   id: string;
-//   name: string;
-//   code: string;
-// }
-
 interface Product {
   id: string;
   name: string;
   sku: string;
-  sale_price: string;
+  sale_price: number;
   unit_id: string;
   unit_name: string;
-  price?: string;
+  price?: number;
   quantity?: string;
   original_quantity?: string;
   returned_quantity?: string;
@@ -160,46 +154,6 @@ export default function ReturnsSetupScreen() {
     setIsEditMode(false);
   };
 
-  // Update all totals
-  const updateTotals = () => {
-    let quantityTotal = 0;
-    let priceTotal = 0;
-    let discountTotal = 0;
-    let grandTotalCalc = 0;
-
-    itemsList.forEach((item, index) => {
-      if (item.product_id && item.quantity) {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = Number(item.price) || 0;
-        
-        quantityTotal += quantity;
-        
-        // Calculate item subtotal (price * quantity)
-        const itemSubtotal = price * quantity;
-        priceTotal += itemSubtotal;
-        
-        // Calculate discount for this item
-        let itemDiscount = 0;
-        if (item.discountType === 'Percentage') {
-          itemDiscount = (itemSubtotal * parseFloat(item.discountValue || '0')) / 100;
-        } else {
-          itemDiscount = parseFloat(item.discountValue || '0');
-        }
-        
-        discountTotal += itemDiscount;
-        
-        // Calculate item total after discount
-        const itemTotal = itemSubtotal - itemDiscount;
-        grandTotalCalc += itemTotal;
-      }
-    });
-
-    setTotalQuantity(quantityTotal);
-    setTotalPrice(priceTotal);
-    setTotalDiscount(discountTotal);
-    setGrandTotal(grandTotalCalc);
-  };
-
   const fetchSettings = async () => {
     if (!token) {
       console.error('Token missing for settings API');
@@ -258,7 +212,7 @@ export default function ReturnsSetupScreen() {
         return;
       }
 
-      const res = await axios.get(`${API_URL}/invoices`, {
+      const res = await axios.get(`${API_URL}/active/invoice-numbers`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -291,281 +245,181 @@ export default function ReturnsSetupScreen() {
       }
 
       const response = await axios.get(`${API_URL}/invoices/${invoiceId}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
-      
+
       const invoiceData = response.data;
-      
-      // Set customer information
+
       setCurrentRecord(prev => ({
         ...prev,
+        invoice_id: invoiceId,
         customer_id: invoiceData.customer_id?.toString() || '',
         customer_name: invoiceData.customer_name || '',
       }));
 
-      // Use details array to get original items
-      const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
-      
-      // Transform items data to match our interface - USE THE NEW AVAILABLE QUANTITY
-      const transformedItems = itemsData.map((item: any) => ({
-        id: item.id?.toString() || '',
-        product_id: item.product_id?.toString() || '',
-        product_name: item.product_name || '',
-        product_sku: item.product_sku || '',
-        quantity: '0', // Start with 0 for return quantity
-        unit_id: item.unit_id?.toString() || '',
-        unit_name: item.unit_name || '',
-        discountType: item.discount_type || 'Percentage',
-        discountValue: item.discount_value ? item.discount_value.toString() : '0',
-        price: item.sale_price ? item.sale_price.toString() : '0',
-        total_amount: '0', // Start with 0
-        max_return_quantity: item.available_quantity ? item.available_quantity.toString() : '0', // Use available_quantity instead of quantity
-        available_quantity: item.available_quantity ? item.available_quantity.toString() : '0',
-        original_quantity: item.original_quantity ? item.original_quantity.toString() : '0',
-        returned_quantity: item.returned_quantity ? item.returned_quantity.toString() : '0'
-      }));
+      const itemsData = Array.isArray(invoiceData.details) ? invoiceData.details : [];
 
-      setOriginalInvoiceItems(transformedItems);
-      
-      // Automatically add all products to itemsList for return
-      setItemsList(transformedItems);
-      
-      // Initialize pickers arrays
-      const pickersArray = new Array(transformedItems.length).fill(false);
-      setShowProductPickers(pickersArray);
-      
-      // Fetch available products for this invoice
-      await fetchAvailableProducts(invoiceId);
+      const transformedItems = itemsData.map((item: any) => {
+        const originalQty = Number(item.original_quantity || item.quantity || 0);
+        const returnedQty = Number(item.returned_quantity || 0);
+        const availableQty = Math.max(0, originalQty - returnedQty);
+        const price = Number(item.price || 0);
+        const discountValue = Number(item.discount_value || 0);
+        const discountType = item.discount_type || 'Fixed';
 
-    } catch (error: any) {
-      console.error('Error fetching invoice details:', error);
-      
-      if (error.response?.status === 401) {
-        Alert.alert('Authentication Error', 'Please login again');
-      } else if (error.response?.status === 404) {
-        Alert.alert('Error', 'Invoice not found');
-      } else {
-        Alert.alert('Error', 'Failed to load invoice details');
-      }
-    }
-  };
-  
-  // Fetch available products for returns
-  const fetchAvailableProducts = async (invoiceId: string) => {
-    try {
-      if (!token) return;
+        const subtotal = availableQty * price;
+        const discountAmount = discountType === 'Percentage' 
+          ? (subtotal * discountValue) / 100 
+          : discountValue;
+        const totalAmount = subtotal - discountAmount;
 
-      const response = await axios.get(`${API_URL}/invoices/${invoiceId}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        return {
+          id: item.id?.toString() || '',
+          product_id: item.product_id?.toString() || '',
+          product_name: item.product_name || '',
+          product_sku: item.product_sku || '',
+          quantity: String(availableQty),
+          unit_id: item.unit_id?.toString() || '',
+          unit_name: item.unit_name || '',
+          discountType: discountType,
+          discountValue: String(discountValue),
+          price: price,
+          total_amount: Math.max(0, totalAmount),
+          original_quantity: String(originalQty),
+          returned_quantity: String(returnedQty),
+          available_quantity: String(availableQty),
+          max_return_quantity: String(availableQty)
+        };
       });
 
-      const invoiceData = response.data;
-      
-      // Extract products from the details array
-      const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
-      
-      const transformedProducts = itemsData.map((item: any) => ({
-        id: item.product_id?.toString() || '',
-        name: item.product_name || 'Unknown Product',
-        sku: item.product_sku || 'N/A',
-        sale_price: item.sale_price || '0',
-        unit_id: item.unit_id?.toString() || '',
-        unit_name: item.unit_name || '',
-        quantity: item.available_quantity !== undefined ? item.available_quantity.toString() : '0',
-        original_quantity: item.original_quantity ? item.original_quantity.toString() : '0',
-        returned_quantity: item.returned_quantity ? item.returned_quantity.toString() : '0',
-        price: item.sale_price || '0',
-        product_label: `${item.product_name || 'Unknown Product'} (${item.product_sku || 'N/A'}) - ${settings.currency} ${item.sale_price || '0'} - Available: ${item.available_quantity !== undefined ? item.available_quantity.toString() : '0'}`
-      }));
-      
-      setProducts(transformedProducts);
-      setFilteredProducts(transformedProducts);
+      setOriginalInvoiceItems(transformedItems);
+      setItemsList(transformedItems);
+      setShowProductPickers(new Array(transformedItems.length).fill(false));
 
-    } catch (error: any) {
-      console.error('Error fetching available products:', error);
-      // Fallback logic...
+      const preparedProducts = transformedItems.map((t: InvoiceItem) => ({
+        id: t.product_id,
+        name: t.product_name,
+        sku: t.product_sku,
+        sale_price: t.price,
+        unit_id: t.unit_id,
+        unit_name: t.unit_name,
+        quantity: t.available_quantity,
+        original_quantity: t.original_quantity,
+        returned_quantity: t.returned_quantity,
+        product_label: `${t.product_name} (${t.product_sku}) - ${t.available_quantity} available`
+      }));
+
+      setProducts(preparedProducts);
+      setFilteredProducts(preparedProducts);
+
+    } catch (err: any) {
+      console.error('Error fetching invoice details:', err);
+      if (err.response?.status === 401) Alert.alert('Authentication Error', 'Please login again');
+      else if (err.response?.status === 404) Alert.alert('Error', 'Invoice not found');
+      else Alert.alert('Error', 'Failed to load invoice details');
     }
   };
   
   // Fetch return data for edit mode - Fixed transformation
   const fetchReturnData = async (returnId: string) => {
     try {
-      if (!token) {
-        Alert.alert('Error', 'Authentication token is missing');
-        return;
-      }
+      if (!token) { Alert.alert('Error', 'Authentication token is missing'); return; }
 
-      // 1. Fetch the return data (this works fine)
-      const returnResponse = await axios.get(`${API_URL}/invoice/returns/${returnId}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const returnResp = await axios.get(`${API_URL}/invoice/returns/${returnId}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
-      
-      const returnData = returnResponse.data;
 
-      // Set basic return data
-      const updatedRecord = {
+      const returnData = returnResp.data;
+
+      setCurrentRecord({
         id: returnData.id?.toString() || '',
-        invoice_id: returnData.invoice_id || '',
+        invoice_id: returnData.invoice_id?.toString() || '',
         customer_id: returnData.customer_id?.toString() || '',
         customer_name: returnData.customer_name || '',
-        return_date: returnData.return_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+        return_date: returnData.return_date?.split('T')[0] || (new Date()).toISOString().split('T')[0],
         status: returnData.status || 'Active',
         items: []
-      };
-      
-      setCurrentRecord(updatedRecord);
-      
-      const invoiceDetailsResponse = await axios.get(
-        `${API_URL}/invoice/returns/${returnData.invoice_id}`, 
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (invoiceDetailsResponse.data.error) {
-        console.error('Invoice API Error:', invoiceDetailsResponse.data.error);
-        Alert.alert('Error', invoiceDetailsResponse.data.error);
-        return;
-      }
-
-      const invoiceData = invoiceDetailsResponse.data;
-
-      // Transform items with proper max quantity calculation for edit mode
-      const itemsData = invoiceData.details && Array.isArray(invoiceData.details) ? invoiceData.details : [];
-      
-      const transformedItems = itemsData.map((item: any) => {
-        const originalAvailableQty = item.original_quantity ? parseInt(item.original_quantity) : 0;
-        const returnedQty = item.returned_quantity ? parseInt(item.returned_quantity) : 0;
-        
-        const currentReturnItem = returnData.details?.find((ri: any) => 
-          ri.product_id?.toString() === item.product_id?.toString()
-        );
-        const currentReturnQty = currentReturnItem?.quantity ? parseInt(currentReturnItem.quantity) : 0;
-        
-        // For edit mode: max = original available + current return quantity
-        const maxReturnQuantity = originalAvailableQty + currentReturnQty;
-        
-        return {
-          id: item.id?.toString() || '',
-          product_id: item.product_id ? item.product_id.toString() : '',
-          product_name: item.product_name || '',
-          product_sku: item.product_sku || '',
-          quantity: '0',
-          unit_id: item.unit_id?.toString() || '',
-          unit_name: item.unit_name || '',
-          discountType: item.discount_type || 'Percentage',
-          discountValue: item.discount_value ? item.discount_value.toString() : '0',
-          price: item.sale_price ? Number(item.sale_price) : 0,
-          total_amount: 0,
-          available_quantity: item.available_quantity?.toString() || '0',
-          original_quantity: item.original_quantity?.toString() || '0',
-          returned_quantity: item.returned_quantity?.toString() || '0',
-          max_return_quantity: maxReturnQuantity.toString()
-        };
       });
 
-      setOriginalInvoiceItems(transformedItems);
-      
-      // Merge with return quantities
-      const returnItems = returnData.details || [];
-      const mergedItems = transformedItems.map((invoiceItem: any) => {
-        const returnItem = returnItems.find((ri: any) => 
-          ri.product_id?.toString() === invoiceItem.product_id
-        );
+      const invoiceResp = await axios.get(`${API_URL}/invoices/${returnData.invoice_id}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const invoiceData = invoiceResp.data;
+      const invoiceItems = Array.isArray(invoiceData.details) ? invoiceData.details : [];
+
+      const invoiceMap: Record<string, any> = {};
+      invoiceItems.forEach((it: any) => {
+        invoiceMap[String(it.product_id)] = it;
+      });
+
+      const returnDetails = Array.isArray(returnData.details) ? returnData.details : [];
+
+      const merged = Object.values(invoiceMap).map((it: any) => {
+        const rItem = returnDetails.find((rd: any) => String(rd.product_id) === String(it.product_id));
+        const originalQty = Number(it.original_quantity || 0);
+        const returnedQty = Number(it.returned_quantity || 0);
+        const currentReturnQty = rItem ? Number(rItem.quantity) : 0;
+        const availableQty = Math.max(0, originalQty - returnedQty);
+        const maxReturnQuantity = availableQty + currentReturnQty;
         
-        if (returnItem) {
-          return {
-            ...invoiceItem,
-            id: returnItem.id?.toString() || '',
-            quantity: returnItem.quantity?.toString() || '0',
-            discountType: returnItem.discount_type || invoiceItem.discountType,
-            discountValue: returnItem.discount_value?.toString() || invoiceItem.discountValue,
-            price: returnItem.price ? Number(returnItem.price) : invoiceItem.price,
-            total_amount: returnItem.total_amount ? Number(returnItem.total_amount) : 0,
-          };
-        }
+        const price = Number(rItem?.price ?? it.price ?? 0);
+        const discountValue = Number(rItem?.discount_value ?? it.discount_value ?? 0);
+        const discountType = rItem?.discount_type || it.discount_type || 'Fixed';
 
-        return invoiceItem;
-      })
-      .filter((item: InvoiceItem) => item.quantity !== '0');
+        const qty = currentReturnQty;
+        const subtotal = qty * price;
+        const discountAmount = discountType === 'Percentage' 
+          ? (subtotal * discountValue) / 100 
+          : discountValue;
+        const totalAmount = subtotal - discountAmount;
 
-      setItemsList(mergedItems);
-      setShowProductPickers(new Array(mergedItems.length).fill(false));
+        return {
+          id: rItem ? String(rItem.id) : '', 
+          product_id: String(it.product_id),
+          product_name: it.product_name,
+          product_sku: it.product_sku,
+          quantity: String(qty),
+          unit_id: it.unit_id?.toString() || '',
+          unit_name: it.unit_name || '',
+          discountType: discountType,
+          discountValue: String(discountValue),
+          price: price,
+          total_amount: Math.max(0, totalAmount),
+          original_quantity: String(originalQty),
+          returned_quantity: String(returnedQty),
+          available_quantity: String(availableQty),
+          max_return_quantity: String(maxReturnQuantity)
+        };
+      }).filter(item => Number(item.quantity) > 0);
+
+      setOriginalInvoiceItems(merged);
+      setItemsList(merged);
+      setShowProductPickers(new Array(merged.length).fill(false));
       
-      // Fetch available products if needed
-      await fetchAvailableProducts(invoiceData.id);
+      const preparedProducts = merged.map(t => ({
+        id: t.product_id,
+        name: t.product_name,
+        sku: t.product_sku,
+        sale_price: t.price,
+        unit_id: t.unit_id,
+        unit_name: t.unit_name,
+        quantity: t.available_quantity,
+        original_quantity: t.original_quantity,
+        returned_quantity: t.returned_quantity,
+        product_label: `${t.product_name} (${t.product_sku}) - ${t.available_quantity} available`
+      }));
+      setProducts(preparedProducts);
+      setFilteredProducts(preparedProducts);
 
-    } catch (error: any) {
-      console.error('Error in fetchReturnData:', error);
-      
-      if (error.response?.status === 401) {
-        Alert.alert('Authentication Error', 'Please login again');
-      } else if (error.response?.status === 404) {
-        Alert.alert('Error', 'Invoice or return record not found');
-      } else if (error.response?.data?.error) {
-        Alert.alert('Error', error.response.data.error);
-      } else {
-        Alert.alert('Error', 'Failed to load return data');
-      }
+      // ✅ The useEffect will handle totals calculation
+
+    } catch (err: any) {
+      console.error('Error in fetchReturnData:', err);
+      if (err.response?.status === 401) Alert.alert('Authentication Error', 'Please login again');
+      else if (err.response?.status === 404) Alert.alert('Error', 'Return or invoice not found');
+      else Alert.alert('Error', 'Failed to load return data');
     }
   };
-
-  // const handleQuantityChange = (index: number, value: string) => {
-  //   const updatedItems = [...itemsList];
-  //   const item = updatedItems[index];
-    
-  //   // Parse quantities
-  //   const newQuantity = parseFloat(value) || 0;
-  //   const maxReturnQuantity = parseFloat(item.max_return_quantity) || 0;
-    
-  //   // 🔥 FIX: For edit mode, allow up to max_return_quantity
-  //   if (newQuantity > maxReturnQuantity) {
-  //     Alert.alert(
-  //       'Quantity Limit',
-  //       `Cannot return more than ${maxReturnQuantity} units for ${item.product_name}. ` +
-  //       `Note: In edit mode, you can modify quantities up to the original available limit.`
-  //     );
-  //     return;
-  //   }
-    
-  //   // Update quantity and recalculate total
-  //   item.quantity = value;
-  //   item.total_amount = calculateItemTotal(item);
-  //   updatedItems[index] = item;
-    
-  //   setItemsList(updatedItems);
-  // };
-
-  // const calculateItemTotal = (item: any): number => {
-  //   const quantity = parseFloat(item.quantity) || 0;
-  //   const price = parseFloat(item.price.toString()) || 0;
-  //   const discountValue = parseFloat(item.discountValue) || 0;
-    
-  //   let subtotal = quantity * price;
-    
-  //   if (item.discountType === 'Percentage') {
-  //     // Percentage discount
-  //     const discountAmount = subtotal * (discountValue / 100);
-  //     subtotal -= discountAmount;
-  //   } else if (item.discountType === 'Fixed') {
-  //     // Fixed amount discount
-  //     subtotal -= discountValue;
-  //   }
-    
-  //   return Math.max(0, subtotal);
-  // };
 
   // Check if we're in edit mode
   useEffect(() => {
@@ -601,11 +455,6 @@ export default function ReturnsSetupScreen() {
       setFilteredInvoices([]);
     }
   }, [invoiceNumbers, invoiceSearch]);
-
-  // Update totals when itemsList changes
-  useEffect(() => {
-    updateTotals();
-  }, [itemsList]);
 
   // Combined data fetching effect
   useEffect(() => {
@@ -648,15 +497,19 @@ export default function ReturnsSetupScreen() {
   const handleInvoiceSelect = (invoiceId: string) => {
     const selectedInvoice = invoiceNumbers.find(inv => inv.id === invoiceId);
     if (selectedInvoice) {
+      // store invoice id for API calls (we keep invoice_number if you want it for display)
       setCurrentRecord(prev => ({ 
         ...prev, 
-        invoice_number: selectedInvoice.invoice_number 
+        invoice_id: invoiceId,
+        customer_id: selectedInvoice.customer_id?.toString() || '',
+        customer_name: selectedInvoice.customer_name || '',
+        invoice_number: selectedInvoice.invoice_number || ''
       }));
       setShowInvoicePicker(false);
       setInvoiceSearch('');
-      clearError('invoice_number');
-      
-      // Fetch invoice details and available products
+      clearError('invoice_id');
+
+      // fetch details (and available products for returns)
       fetchInvoiceDetails(invoiceId);
     }
   };
@@ -682,20 +535,30 @@ export default function ReturnsSetupScreen() {
       const updatedItems = [...itemsList];
       const originalItem = originalInvoiceItems.find(item => item.product_id === productId);
       
+      const availableQty = Number(selectedProduct.quantity || 0);
+      const price = Number(selectedProduct.sale_price) || 0;
+      const discountValue = Number(originalItem?.discountValue || 0);
+      const discountType = originalItem?.discountType || 'Fixed';
+
+      const subtotal = availableQty * price;
+      const discountAmount = discountType === 'Percentage'
+        ? (subtotal * discountValue) / 100
+        : discountValue;
+      const totalAmount = subtotal - discountAmount;
+
       updatedItems[index] = {
         ...updatedItems[index],
         product_id: productId,
         product_name: selectedProduct.name,
-        price: Number(selectedProduct.sale_price) || 0,
+        price: price,
         unit_id: selectedProduct.unit_id,
         unit_name: selectedProduct.unit_name,
-        quantity: updatedItems[index].quantity || '0',
-        discountType: originalItem?.discountType || 'Percentage',
-        discountValue: originalItem?.discountValue || '0',
-        total_amount: 0,
-        // Use available_quantity from the product data
-        max_return_quantity: selectedProduct.quantity || '0',
-        available_quantity: selectedProduct.quantity || '0',
+        quantity: String(availableQty),
+        discountType: discountType,
+        discountValue: String(discountValue),
+        total_amount: Math.max(0, totalAmount),
+        max_return_quantity: String(availableQty),
+        available_quantity: String(availableQty),
         original_quantity: selectedProduct.original_quantity || '0',
         returned_quantity: selectedProduct.returned_quantity || '0'
       };
@@ -706,7 +569,8 @@ export default function ReturnsSetupScreen() {
       setShowProductPickers(newPickers);
       setProductSearch('');
       
-      updateRowTotal(index);
+      // ✅ Recalculate totals
+      setTimeout(() => updateTotals(), 10);
     }
   };
 
@@ -754,7 +618,6 @@ export default function ReturnsSetupScreen() {
   // Update the deleteItemRow function
   const deleteItemRow = (index: number) => {
     const itemToDelete = itemsList[index];
-    
     Alert.alert(
       'Delete Item',
       `Are you sure you want to remove this return item?`,
@@ -765,42 +628,29 @@ export default function ReturnsSetupScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // If the item has an ID (existing item from API), delete from server
-              if (itemToDelete.id && isEditMode) {
+              if (itemToDelete?.id && isEditMode) {
                 const response = await axios.delete(`${API_URL}/invoice/returns/items/${itemToDelete.id}`, {
-                  headers: { 
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  }
+                  headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
                 });
-                
                 if (response.status === 200) {
-                  // Remove from local state after successful API call
                   const updatedItems = itemsList.filter((_, i) => i !== index);
                   setItemsList(updatedItems);
-                  const updatedPickers = showProductPickers.filter((_, i) => i !== index);
-                  setShowProductPickers(updatedPickers);
+                  setShowProductPickers(prev => prev.filter((_, i) => i !== index));
                 }
               } else {
-                // If it's a new item (no ID), just remove from local state
+                // just remove locally
                 const updatedItems = itemsList.filter((_, i) => i !== index);
                 setItemsList(updatedItems);
-                const updatedPickers = showProductPickers.filter((_, i) => i !== index);
-                setShowProductPickers(updatedPickers);
+                setShowProductPickers(prev => prev.filter((_, i) => i !== index));
               }
             } catch (error: any) {
               console.error('Error deleting item:', error);
-              
-              if (error.response?.status === 401) {
-                Alert.alert('Authentication Error', 'Please login again');
-              } else if (error.response?.status === 404) {
-                Alert.alert('Error', 'Item not found');
-              } else {
-                Alert.alert('Error', 'Failed to delete item. Please try again.');
-              }
+              if (error.response?.status === 401) Alert.alert('Authentication Error', 'Please login again');
+              else if (error.response?.status === 404) Alert.alert('Error', 'Item not found');
+              else Alert.alert('Error', 'Failed to delete item. Please try again.');
             }
-          },
-        },
+          }
+        }
       ],
       { cancelable: true }
     );
@@ -808,76 +658,76 @@ export default function ReturnsSetupScreen() {
 
   // Update row total when quantity or discount changes
   const updateRowTotal = (index: number) => {
-    const updatedItems = [...itemsList];
-    const item = updatedItems[index];
-    
-    if (item.product_id && item.quantity && item.price) {
-      const quantity = parseFloat(item.quantity) || 0;
+    setItemsList(prevItems => {
+      const updated = [...prevItems];
+      const item = updated[index];
+      if (!item) return prevItems;
+
+      const qty = parseFloat(item.quantity) || 0;
       const price = Number(item.price) || 0;
       const discountValue = parseFloat(item.discountValue) || 0;
-      
+
       let discountAmount = 0;
-      
-      // Calculate discount based on discount type
       if (item.discountType === 'Percentage') {
-        // For percentage, calculate discount based on current return quantity
-        discountAmount = (price * quantity * discountValue) / 100;
+        discountAmount = (qty * price * discountValue) / 100;
       } else {
-        // For fixed discount, use the discount value as is
         discountAmount = discountValue;
       }
-      
-      const total = (price * quantity) - discountAmount;
-      item.total_amount = parseFloat(Math.max(0, total).toFixed(2));
-      setItemsList(updatedItems);
-      
-      // Update totals immediately
-      updateTotals();
-    }
+
+      const total = qty * price - discountAmount;
+      updated[index].total_amount = Math.max(0, parseFloat(total.toFixed(2)));
+
+      return updated;
+    });
   };
 
-  // Recalculate all item totals when itemsList changes
+  // ✅ Keep this for when you need to recalculate from current state
+  const updateTotals = () => {
+    let quantityTotal = 0;
+    let priceTotal = 0;
+    let discountTotal = 0;
+    let grandTotalCalc = 0;
+
+    itemsList.forEach(item => {
+      // Include all items with product_id
+      if (!item.product_id) return;
+
+      const qty = parseFloat(item.quantity) || 0;
+      const price = Number(item.price) || 0;
+      const discountValue = parseFloat(item.discountValue) || 0;
+      const discountType = item.discountType || 'Fixed';
+
+      const subtotal = qty * price;
+
+      const discount = discountType === 'Percentage'
+        ? (subtotal * discountValue) / 100
+        : discountValue;
+
+      const total = subtotal - discount;
+
+      quantityTotal += qty;
+      priceTotal += subtotal;
+      discountTotal += discount;
+      grandTotalCalc += total;
+    });
+
+    setTotalQuantity(quantityTotal);
+    setTotalPrice(priceTotal);
+    setTotalDiscount(discountTotal);
+    setGrandTotal(grandTotalCalc);
+  };
+
+  // ✅ Also update when invoice details are loaded
   useEffect(() => {
     if (itemsList.length > 0) {
-      const updatedItems = itemsList.map(item => {
-        if (item.product_id && item.quantity && item.price && (!item.total_amount || item.total_amount === 0)) {
-          const quantity = parseFloat(item.quantity) || 0;
-          const price = Number(item.price) || 0;
-          const discountValue = parseFloat(item.discountValue) || 0;
-          
-          let discountAmount = 0;
-          if (item.discountType === 'Percentage') {
-            discountAmount = (price * quantity * discountValue) / 100;
-          } else {
-            discountAmount = discountValue;
-          }
-          
-          const total = (price * quantity) - discountAmount;
-          return {
-            ...item,
-            total_amount: parseFloat(Math.max(0, total).toFixed(2))
-          };
-        }
-        return item;
-      });
-      
-      // Only update if something changed
-      const hasChanges = JSON.stringify(updatedItems) !== JSON.stringify(itemsList);
-      if (hasChanges) {
-        setItemsList(updatedItems);
-      }
-      
-      // Always update totals
       updateTotals();
+    } else {
+      setTotalQuantity(0);
+      setTotalPrice(0);
+      setTotalDiscount(0);
+      setGrandTotal(0);
     }
-  }, [itemsList.length]); // Only run when items count changes
-
-  // Validate quantity doesn't exceed maximum returnable quantity
-  const validateQuantity = (quantity: string, maxQuantity: string) => {
-    const qty = parseFloat(quantity) || 0;
-    const maxQty = parseFloat(maxQuantity) || 0;
-    return qty <= maxQty;
-  };
+  }, [itemsList]); // Only run when items are added/removed
 
   const clearError = (field: string) => {
     setFormErrors((prev: any) => ({ ...prev, [field]: '' }));
@@ -913,73 +763,57 @@ export default function ReturnsSetupScreen() {
     setFormErrors({});
 
     try {
-      // 🔥 FIX: Determine the correct status
-      const finalStatus = isPost ? 'Posted' : currentRecord.status;
-
-      const formData = {
-        ...currentRecord,
-        id: currentRecord.id, // ✅ add this
+      const payload = {
+        ...(isEditMode && currentRecord.id ? { id: currentRecord.id } : {}),
+        id: currentRecord.id,
         invoice_id: currentRecord.invoice_id,
-        status: finalStatus,
-        total_quantity: totalQuantity.toFixed(2),
-        total_price: totalPrice.toFixed(2),
-        total_discount: totalDiscount.toFixed(2),
-        grand_total: grandTotal.toFixed(2),
+        customer_id: currentRecord.customer_id,
+        return_date: currentRecord.return_date,
+        status: isPost ? 'Posted' : currentRecord.status,
+        total_quantity: Number(totalQuantity).toFixed(2),
+        total_price: Number(totalPrice).toFixed(2),
+        total_discount: Number(totalDiscount).toFixed(2),
+        grand_total: Number(grandTotal).toFixed(2),
         items: itemsList.map(item => ({
-          id: item.id,
+          id: item.id || null,
           product_id: item.product_id,
           quantity: item.quantity,
-          unit_id: item.unit_id,
-          discount_type: item.discountType,
-          discount_value: item.discountValue,
+          unit_id: item.unit_id || null,
+          unit_name: item.unit_name || '',
           price: item.price,
-          total_amount: item.total_amount,
-        })),
+          discount_type: item.discountType || 'Fixed',
+          discount_value: item.discountValue || '0',
+          total_amount: item.total_amount
+        }))
       };
 
       let response;
       if (isEditMode && currentRecord.id) {
-        // Update existing return
-        response = await axios.put(`${API_URL}/invoice/returns/${currentRecord.id}`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+        response = await axios.put(`${API_URL}/invoice/returns/${currentRecord.id}`, payload, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
         });
       } else {
-        // Create new return
-        response = await axios.post(`${API_URL}/invoice/returns`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+        response = await axios.post(`${API_URL}/invoice/returns`, payload, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
         });
       }
 
-      // Success - redirect to list
+      // success: navigate
       router.push('/(drawer)/invoices/returns/lists');
-      if (!isEditMode) {
-        resetForm();
-      }
+      if (!isEditMode) resetForm();
 
-    } catch (error: any) {
-      console.error('Error saving invoice return:', error);
-      
-      if (error.response?.status === 422) {
-        // Validation errors from backend
-        const backendErrors = error.response.data.errors || {};
-        setFormErrors(backendErrors);
-        
-        if (error.response.data.message) {
-          setGlobalErrorMessage(error.response.data.message);
-        }
-        
-      } else if (error.response?.status === 500) {
-        const errorMessage = error.response.data?.error || error.response.data?.message || 'Server error occurred';
+    } catch (err: any) {
+      console.error('Error saving invoice return:', err);
+
+      if (err.response?.status === 422) {
+        const backendErrors = err.response.data.errors || {};
+        setFormErrors(mapBackendErrors(backendErrors));
+        if (err.response.data.message) setGlobalErrorMessage(err.response.data.message);
+      } else if (err.response?.status === 500) {
+        const errorMessage = err.response.data?.error || err.response.data?.message || 'Server error occurred';
         setGlobalErrorMessage(errorMessage);
-        
       } else {
-        const errorMsg = error.response?.data?.message || 'Something went wrong. Please try again.';
+        const errorMsg = err.response?.data?.message || 'Something went wrong. Please try again.';
         setGlobalErrorMessage(errorMsg);
       }
     } finally {
@@ -987,19 +821,44 @@ export default function ReturnsSetupScreen() {
     }
   };
 
+  // Backend may return keys like items.1.quantity or items.<productId>.quantity or items.0.quantity
+  const mapBackendErrors = (backendErrors: any) => {
+    const mapped: any = { ...backendErrors };
+
+    // Convert items.1.quantity -> items[1].quantity for React Native style if needed
+    Object.keys(backendErrors).forEach(key => {
+      if (key.startsWith('items.')) {
+        // Example: items.1.quantity
+        const parts = key.split('.');
+        if (parts.length === 3) {
+          const idx = parts[1]; // could be index or productId
+          const field = parts[2]; // quantity
+          // create RN-friendly key: items[index].quantity
+          const newKey = `items[${idx}].${field}`;
+          mapped[newKey] = backendErrors[key];
+        }
+      }
+    });
+
+    return mapped;
+  };
+
   const getSelectedProductName = (productId: string) => {
     const product = products.find(p => p.id.toString() === productId.toString());
     return product ? `${product.name} (${product.sku})` : 'Select Product';
   };
 
-  const getSelectedInvoiceName = (invoiceNumber: string) => {
-    const invoice = invoiceNumbers.find(inv => inv.invoice_number === invoiceNumber);
-    return invoice ? `${invoice.invoice_number}` : 'Select Invoice';
+  const getSelectedInvoiceName = (invoiceId?: string | number) => {
+    if (!invoiceId) return 'Select One';
+    const invoice = invoiceNumbers.find(
+      inv => inv.id?.toString() === invoiceId.toString()
+    );
+    return invoice ? invoice.invoice_number : 'Select One';
   };
 
   const getSelectedStatusName = (statusKey: string) => {
     const status = statusOptions.find(s => s.key === statusKey);
-    return status ? status.value : 'Select Status';
+    return status ? status.value : 'Select One';
   };
 
   const renderItemRow = ({ item, index }: { item: InvoiceItem; index: number }) => {
@@ -1255,9 +1114,12 @@ export default function ReturnsSetupScreen() {
         {/* Action */}
         <View style={[styles.cell, styles.cellAction]}>
           <TouchableOpacity
-            style={styles.deleteButton}
+            style={[
+              styles.deleteButton,
+              (isLoading || currentRecord.status === 'Posted') && styles.deleteButtonDisabled
+            ]}
             onPress={() => deleteItemRow(index)}
-            disabled={isLoading}
+            disabled={isLoading || currentRecord.status === 'Posted'}
           >
             <Ionicons name="trash-outline" size={16} color="#FF3B30" />
           </TouchableOpacity>
@@ -1463,7 +1325,7 @@ export default function ReturnsSetupScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.buttonText}>Post Return</Text>
+              <Text style={styles.buttonText}>Return Invoice Post</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -1482,7 +1344,7 @@ export default function ReturnsSetupScreen() {
             <Text style={styles.globalError}>{globalErrorMessage}</Text>
           </View>
         ) : null}
-
+        
         {/* Modals */}
         {showDatePicker && (
           <DateTimePicker
@@ -1867,6 +1729,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#fecaca',
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
   },
   addItemButton: {
     flexDirection: 'row',

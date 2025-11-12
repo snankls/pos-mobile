@@ -93,6 +93,7 @@ export default function ReturnsViewScreen() {
     switch (status?.toLowerCase()) {
       case 'active': return '#34C759';
       case 'inactive': return '#FF3B30';
+      case 'posted': return '#007AFF';
       default: return '#34C759';
     }
   };
@@ -128,7 +129,7 @@ export default function ReturnsViewScreen() {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
                   },
-                  responseType: 'blob' // Important for file download
+                  responseType: 'blob'
                 });
 
                 // For web - open in new tab
@@ -143,8 +144,6 @@ export default function ReturnsViewScreen() {
                 } else {
                   // For mobile - you might need additional libraries like expo-file-system
                   Alert.alert('Success', 'PDF download started');
-                  // For React Native, you might need to use Linking or share the file
-                  // This is a basic implementation - you may need to adjust for mobile
                 }
               } catch (error: any) {
                 console.error('Error downloading PDF:', error);
@@ -228,7 +227,7 @@ export default function ReturnsViewScreen() {
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
           
-          <Text style={styles.title}>IReturn Details</Text>
+          <Text style={styles.title}>Invoice Return Details</Text>
           
           <TouchableOpacity onPress={() => router.push(`/(drawer)/invoices/returns/setup?id=${id}`)} style={styles.editButton}>
               <Ionicons name="create-outline" size={20} color="#6366F1" />

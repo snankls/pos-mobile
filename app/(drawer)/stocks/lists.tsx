@@ -355,14 +355,10 @@ export default function StocksListsScreen() {
             style={[
               styles.actionButton,
               styles.deleteButton,
-              item.status === 'Posted' && { opacity: 0.5 },
+              (item.status === 'Posted') && styles.deleteButtonDisabled
             ]}
           >
-            <Ionicons
-              name="trash-outline"
-              size={18}
-              color={item.status === 'Posted' ? '#ccc' : '#FF3B30'}
-            />
+            <Ionicons name="trash-outline" size={18} color={item.status === 'Posted' ? '#ccc' : '#FF3B30'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -522,7 +518,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     gap: 10 
   },
-  
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -531,17 +526,17 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 5,
   },
-  
   viewButton: {
     backgroundColor: '#E9F9EE',
   },
-  
   editButton: { 
     backgroundColor: '#E8F2FF' 
   },
-  
   deleteButton: { 
     backgroundColor: '#FFEAEA' 
+  },
+  deleteButtonDisabled: {
+    opacity: 0.7,
   },
 
   // ==============================
