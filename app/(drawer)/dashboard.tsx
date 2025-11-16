@@ -211,10 +211,10 @@ export default function DashboardScreen() {
               })}
             </Text>
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
+          {/* <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#374151" />
             <View style={styles.notificationBadge} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Quick Stats */}
@@ -257,7 +257,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Recent Activity */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
             <TouchableOpacity>
@@ -284,10 +284,10 @@ export default function DashboardScreen() {
               </View>
             ))}
           </View>
-        </View>
+        </View> */}
 
         {/* Performance Metrics */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Performance</Text>
           <View style={styles.metricsCard}>
             <View style={styles.metricItem}>
@@ -303,7 +303,7 @@ export default function DashboardScreen() {
               <Text style={styles.metricLabel}>This Week</Text>
             </View>
           </View>
-        </View>
+        </View> */}
 
       </ScrollView>
     </View>

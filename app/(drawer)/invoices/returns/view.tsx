@@ -347,7 +347,7 @@ export default function ReturnsViewScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        {/* <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={styles.secondaryButton}
             onPress={downloadPDF}
@@ -363,7 +363,7 @@ export default function ReturnsViewScreen() {
             <Ionicons name="mail-outline" size={18} color="#fff" />
             <Text style={styles.buttonText}>Email I-Return</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

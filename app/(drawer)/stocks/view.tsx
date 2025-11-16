@@ -286,7 +286,7 @@ export default function StocksViewScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        {/* <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.secondaryButton}>
             <Ionicons name="print-outline" size={18} color="#6366F1" />
             <Text style={styles.secondaryButtonText}>Print Report</Text>
@@ -296,7 +296,7 @@ export default function StocksViewScreen() {
             <Ionicons name="share-outline" size={18} color="#fff" />
             <Text style={styles.buttonText}>Share Stock</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

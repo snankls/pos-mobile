@@ -1232,8 +1232,9 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
-    marginBottom: 20,
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 16,
   },
   
   button: {
@@ -1242,7 +1243,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 6,
   },
   
   primaryButton: {

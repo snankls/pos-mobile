@@ -20,7 +20,7 @@ export default function CompaniesScreen() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const IMAGE_URL = process.env.EXPO_PUBLIC_IMAGE_URL;
 
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
 
   const [company, setCompany] = useState<any>({
@@ -39,19 +39,20 @@ export default function CompaniesScreen() {
 
   // Fetch company record
   useEffect(() => {
-    fetchCompany();
-  }, []);
+    if (user?.company_id) {
+      fetchCompany(user.company_id);
+    }
+  }, [user]);
 
-  const fetchCompany = async () => {
+  const fetchCompany = async (companyId: number) => {
     try {
       setLoading(true);
 
-      const res = await axios.get(`${API_URL}/user/companies`, {
+      const res = await axios.get(`${API_URL}/user/companies/${companyId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Handle both array and object API responses
-      let data = Array.isArray(res.data) ? res.data[0] : res.data?.data || res.data;
+      const data = res.data?.data || res.data;
 
       if (!data) {
         setCompany({ id: '', name: '', address: '', image: null });
@@ -59,31 +60,28 @@ export default function CompaniesScreen() {
         return;
       }
 
-      // Safely extract image filename
-      const imageFileName = data.image_name || data.images?.image_name || null;
+      const imageFileName =
+        data.image_name || data.images?.image_name || null;
 
       setCompany({
-        id: data.id || '',
-        name: data.name || '',
-        address: data.address || '',
-        image: imageFileName,
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        image: imageFileName
       });
 
-      if (imageFileName) {
-        const fullImageUrl = `${IMAGE_URL}/companies/${imageFileName}`;
-        setImagePreview(fullImageUrl);
-      } else {
-        setImagePreview(null);
-      }
+      imageFileName
+        ? setImagePreview(`${IMAGE_URL}/companies/${imageFileName}`)
+        : setImagePreview(null);
 
     } catch (error: any) {
-      console.error('Fetch error:', error.response?.data || error.message);
-      setGlobalErrorMessage('Failed to load company data.');
+      console.error("Fetch error:", error.response?.data || error.message);
+      setGlobalErrorMessage("Failed to load company data.");
     } finally {
       setLoading(false);
     }
   };
-    
+
   // Show global loader until data fetched
   if (loading) return <LoadingScreen />;
 
@@ -161,7 +159,7 @@ export default function CompaniesScreen() {
       });
 
       setSuccessMessage(response.data?.message || 'Record updated successfully!');
-      fetchCompany();
+      fetchCompany(company.id);
       
       // Clear success message after 3 seconds
       setTimeout(() => {

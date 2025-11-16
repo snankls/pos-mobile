@@ -1553,13 +1553,14 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
   },
   
   // ===== TABLE COLUMN WIDTHS =====
   headerCellNumber: { width: 40 },
-  headerCellProduct: { width: 200 },
+  headerCellProduct: { width: 220 },
   headerCellQty: { width: 80 },
   headerCellUnit: { width: 80 },
   headerCellDiscount: { width: 120 },
@@ -1571,18 +1572,20 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderBottomColor: '#f3f4f6',
+    backgroundColor: 'white',
   },
   cell: {
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRightWidth: 1,
-    borderRightColor: '#f0f0f0',
+    borderColor: '#f3f4f6',
+    justifyContent: 'center',
   },
   
   // ===== CELL WIDTHS (Match header widths) =====
   cellNumber: { width: 40 },
-  cellProduct: { width: 200 },
+  cellProduct: { width: 220 },
   cellQty: { width: 80 },
   cellUnit: { width: 80 },
   cellDiscount: { width: 120 },
@@ -1709,8 +1712,9 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
-    marginBottom: 20,
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 16,
   },
   button: {
     flex: 1,
@@ -1718,7 +1722,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 6,
   },
   buttonText: {
     color: '#FFFFFF',

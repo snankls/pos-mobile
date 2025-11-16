@@ -98,9 +98,8 @@ const menuData: MenuItem[] = [
     title: 'Reports',
     icon: 'bar-chart-outline',
     items: [
-      { id: 'reports-customers', title: 'Customers', route: 'reports/customers', icon: 'person-outline' },
-      { id: 'reports-sales', title: 'Sales', route: 'reports/sales', icon: 'stats-chart-outline' },
-      { id: 'reports-inventory', title: 'Inventory', route: 'reports/inventory', icon: 'cube-outline' },
+      { id: 'customer-ledgers', title: 'Customer Ledgers', route: 'reports/customer-ledgers', icon: 'journal-outline' },
+      { id: 'product-ledgers', title: 'Product Ledgers', route: 'reports/product-ledgers', icon: 'document-text-outline' },
     ],
   },
 

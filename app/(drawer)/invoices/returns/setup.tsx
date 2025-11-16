@@ -1054,7 +1054,6 @@ export default function ReturnsSetupScreen() {
             </Text>
           )} */}
 
-
           {quantityError && (
             <Text style={styles.errorTextSmall}>
               Cannot return more than {item.available_quantity} units
@@ -1531,22 +1530,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
   },
   modalTriggerText: {
+    color: '#1C1C1E',
     fontSize: 16,
-    color: '#1f2937',
-    flex: 1,
   },
   modalTriggerPlaceholder: {
     fontSize: 16,
-    color: '#9ca3af',
-    flex: 1,
+    color: '#999',
   },
 
   // ===== READ-ONLY FIELD STYLES =====
@@ -1629,13 +1626,13 @@ const styles = StyleSheet.create({
 
   // ===== TABLE COLUMN WIDTHS =====
   headerCellNumber: { width: 40 },
-  headerCellProduct: { width: 250 },
+  headerCellProduct: { width: 220 },
   headerCellQty: { width: 80 },
   headerCellUnit: { width: 80 },
   headerCellDiscount: { width: 120 },
   headerCellPrice: { width: 150 },
   headerCellTotal: { width: 150 },
-  headerCellAction: { width: 60 },
+  headerCellAction: { width: 80 },
 
   // ===== TABLE ROW STYLES =====
   itemRow: {
@@ -1654,13 +1651,13 @@ const styles = StyleSheet.create({
 
   // ===== CELL WIDTHS (Match header widths) =====
   cellNumber: { width: 40 },
-  cellProduct: { width: 250 },
+  cellProduct: { width: 220 },
   cellQty: { width: 80 },
   cellUnit: { width: 80 },
   cellDiscount: { width: 120 },
   cellPrice: { width: 150 },
   cellTotal: { width: 150 },
-  cellAction: { width: 60 },
+  cellAction: { width: 80 },
 
   // ===== CELL CONTENT STYLES =====
   rowNumberText: {
@@ -1813,8 +1810,9 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
-    marginBottom: 20,
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 16,
   },
   button: {
     flex: 1,
@@ -1822,7 +1820,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 6,
   },
   buttonText: {
     color: '#FFFFFF',

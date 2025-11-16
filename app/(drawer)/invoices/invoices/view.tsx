@@ -79,6 +79,7 @@ export default function InvoiceViewScreen() {
     switch (status?.toLowerCase()) {
       case 'active': return '#34C759';
       case 'inactive': return '#FF3B30';
+      case 'posted': return '#007AFF';
       default: return '#34C759';
     }
   };
@@ -257,6 +258,7 @@ export default function InvoiceViewScreen() {
               </View>
             </View>
 
+            {invoice.customer_email && (
             <View style={styles.detailItem}>
               <View style={styles.detailIcon}>
                 <Ionicons name="mail-outline" size={18} color="#6B7280" />
@@ -266,34 +268,39 @@ export default function InvoiceViewScreen() {
                 <Text style={styles.detailValue} numberOfLines={2}>{invoice.customer_email || 'N/A'}</Text>
               </View>
             </View>
+            )}
 
-            <View style={styles.detailItem}>
-              <View style={styles.detailIcon}>
-                <Ionicons name="logo-whatsapp" size={18} color="#6B7280" />
+            {invoice.customer_whatsapp && (
+              <View style={styles.detailItem}>
+                <View style={styles.detailIcon}>
+                  <Ionicons name="logo-whatsapp" size={18} color="#6B7280" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>WhatsApp</Text>
+                  <TouchableOpacity 
+                    onPress={() => Linking.openURL(`whatsapp://send?phone=${invoice.customer_whatsapp}`)}
+                    disabled={!invoice.customer_whatsapp}
+                  >
+                    <Text style={[styles.detailValue, styles.whatsappLink]} numberOfLines={1}>
+                      {invoice.customer_whatsapp || 'N/A'}
+                      {invoice.customer_whatsapp && ' ↗'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>WhatsApp</Text>
-                <TouchableOpacity 
-                  onPress={() => Linking.openURL(`whatsapp://send?phone=${invoice.customer_whatsapp}`)}
-                  disabled={!invoice.customer_whatsapp}
-                >
-                  <Text style={[styles.detailValue, styles.whatsappLink]} numberOfLines={1}>
-                    {invoice.customer_whatsapp || 'N/A'}
-                    {invoice.customer_whatsapp && ' ↗'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            
+            )}
+
+            {invoice.customer_address && (
             <View style={styles.detailItem}>
               <View style={styles.detailIcon}>
                 <Ionicons name="location-outline" size={18} color="#6B7280" />
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Address</Text>
-                <Text style={styles.detailValue} numberOfLines={2}>{invoice.customer_address || 'N/A'}</Text>
+                <Text style={styles.detailValue}>{invoice.customer_address || 'N/A'}</Text>
               </View>
             </View>
+            )}
           </View>
         </View>
 
@@ -305,29 +312,34 @@ export default function InvoiceViewScreen() {
           </View>
           
           <View style={styles.itemsContainer}>
-            {invoiceItems.map((item, index) => (
-              <View key={item.id} style={styles.itemRow}>
-                <View style={styles.itemMain}>
-                  <Text style={styles.itemName}>
-                    {item.product_name || `Item ${index + 1}`}
-                  </Text>
-                  <Text style={styles.itemSku}>
-                    SKU: {item.product_sku || 'N/A'} • {item.unit_name}
-                  </Text>
-                  <Text style={styles.itemDetails}>
-                    {item.quantity} × {formatCurrency(item.sale_price)}
-                    {item.discount_value > 0 && (
-                      <Text style={styles.discountText}>
-                        {' '}({item.discount_type}{' '}{item.discount_value})
-                      </Text>
-                    )}
+            {invoiceItems.map((item, index) => {
+              const quantity = Number(item.quantity) || 0;
+              const price = Number(item.price) || 0;
+              const total = Number(item.total_amount) || 0;
+
+              return (
+                <View key={item.id} style={styles.itemRow}>
+                  <View style={styles.itemMain}>
+                    <Text style={styles.itemName}>{item.product_name || `Item ${index + 1}`}</Text>
+                    <Text style={styles.itemSku}>
+                      SKU: {item.product_sku || 'N/A'} • {item.unit_name}
+                    </Text>
+                    <Text style={styles.itemDetails}>
+                      {quantity.toFixed(2)} × {formatCurrency(price)}
+                      {item.discount_value > 0 && (
+                        <Text style={styles.discountText}>
+                          {' '}({item.discount_type} {item.discount_value})
+                        </Text>
+                      )}
+                    </Text>
+                  </View>
+                  <Text style={styles.itemTotal}>
+                    {settings.currency}{formatCurrency(total)}
                   </Text>
                 </View>
-                <Text style={styles.itemTotal}>
-                  {settings.currency}{formatCurrency(item.total)}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
+
           </View>
         </View>
 
@@ -365,7 +377,7 @@ export default function InvoiceViewScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        {/* <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={styles.secondaryButton}
             onPress={downloadPDF}
@@ -381,7 +393,7 @@ export default function InvoiceViewScreen() {
             <Ionicons name="mail-outline" size={18} color="#fff" />
             <Text style={styles.buttonText}>Email Invoice</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

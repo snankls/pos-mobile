@@ -6,12 +6,19 @@ import { router } from 'expo-router';
 
 interface User {
   id: number;
+  company_id: number;
   full_name: string;
   email: string;
   first_name?: string;
   images?: {
     image_name?: string;
   };
+}
+
+export interface UserCompany {
+  id: number;
+  name: string;
+  image: string | null;
 }
 
 interface AuthContextType {
